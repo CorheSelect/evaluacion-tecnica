@@ -1,6 +1,598 @@
-const CONFIG = {
-    AIRTABLE_TOKEN: 'patZYcG5rTVQ2fQcr.39c791595fb81b221dafb30bed285885025aee04e7512cc5e1febb1b0bf41890',
-    BASE_ID: 'appvaNZdmHt24cHJV',
-    QUESTIONS_TABLE: 'Banco%20de%20preguntas',
-    RESULTS_TABLE: 'Resultados%20de%20evaluaciones%20por%20candidato'
-};
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluación Técnica - CoRheSelect</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .logo {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .progress-container {
+            padding: 20px 40px;
+            background: #f7fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: #4a5568;
+            font-weight: 500;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 80px 20px;
+            color: #718096;
+        }
+        
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid #e2e8f0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading h3 {
+            font-size: 20px;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+        
+        .question-card {
+            background: #f7fafc;
+            border-radius: 16px;
+            padding: 40px;
+            border-left: 5px solid #667eea;
+            margin-bottom: 30px;
+        }
+        
+        .question-number {
+            color: #667eea;
+            font-weight: 700;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+        }
+        
+        .question-text {
+            font-size: 22px;
+            font-weight: 600;
+            color: #2d3748;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        
+        .options-container {
+            display: grid;
+            gap: 16px;
+        }
+        
+        .option {
+            background: white;
+            border: 3px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .option:hover {
+            border-color: #667eea;
+            background: #f7fafc;
+            transform: translateX(4px);
+        }
+        
+        .option.selected {
+            border-color: #667eea;
+            background: #edf2f7;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+        
+        .option-letter {
+            width: 44px;
+            height: 44px;
+            background: #e2e8f0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+            color: #4a5568;
+            flex-shrink: 0;
+            transition: all 0.2s ease;
+        }
+        
+        .option.selected .option-letter {
+            background: #667eea;
+            color: white;
+            transform: scale(1.1);
+        }
+        
+        .option-text {
+            flex: 1;
+            color: #2d3748;
+            font-size: 17px;
+            line-height: 1.5;
+        }
+        
+        .navigation {
+            display: flex;
+            gap: 20px;
+            justify-content: space-between;
+            margin-top: 40px;
+        }
+        
+        .btn {
+            padding: 18px 36px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #2d3748;
+        }
+        
+        .btn-secondary:hover:not(:disabled) {
+            background: #cbd5e0;
+            transform: translateY(-2px);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            flex: 1;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(102, 126, 234, 0.4);
+        }
+        
+        .success-screen {
+            display: none;
+            text-align: center;
+            padding: 60px 40px;
+        }
+        
+        .success-icon {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            animation: scaleIn 0.5s ease;
+        }
+        
+        @keyframes scaleIn {
+            from { transform: scale(0); }
+            to { transform: scale(1); }
+        }
+        
+        .success-icon svg {
+            width: 50px;
+            height: 50px;
+            stroke: white;
+            stroke-width: 3;
+            fill: none;
+        }
+        
+        .success-screen h2 {
+            font-size: 36px;
+            color: #2d3748;
+            margin-bottom: 16px;
+        }
+        
+        .success-screen p {
+            font-size: 18px;
+            color: #718096;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        
+        .score-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 40px;
+            margin: 30px 0;
+        }
+        
+        .score-number {
+            font-size: 56px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .score-label {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        
+        .error-message {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            display: none;
+            font-weight: 500;
+        }
+
+        .info-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🎯</div>
+            <h1>Evaluación Técnica</h1>
+            <p id="evaluationTitle">CoRheSelect - Gestión de Talento</p>
+            <div class="info-badge" id="techBadge">Cargando...</div>
+        </div>
+        
+        <div class="progress-container">
+            <div class="progress-info">
+                <span id="questionCounter">Preparando evaluación...</span>
+                <span id="timeRemaining">⏱️ --:--</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressBar" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="error-message" id="errorMessage"></div>
+            
+            <div class="loading" id="loadingScreen">
+                <div class="loading-spinner"></div>
+                <h3>Cargando preguntas</h3>
+                <p>Conectando con la base de datos...</p>
+            </div>
+            
+            <div id="questionContainer" style="display: none;">
+                <div class="question-card">
+                    <div class="question-number" id="questionNumber">PREGUNTA 1</div>
+                    <div class="question-text" id="questionText"></div>
+                    <div class="options-container" id="optionsContainer"></div>
+                </div>
+                
+                <div class="navigation">
+                    <button class="btn btn-secondary" id="prevBtn" onclick="previousQuestion()" style="display: none;">
+                        ← Anterior
+                    </button>
+                    <button class="btn btn-primary" id="nextBtn" onclick="nextQuestion()" disabled>
+                        Siguiente →
+                    </button>
+                    <button class="btn btn-primary" id="finishBtn" onclick="submitEvaluation()" style="display: none;" disabled>
+                        ✓ Finalizar Evaluación
+                    </button>
+                </div>
+            </div>
+            
+            <div class="success-screen" id="successScreen">
+                <div class="success-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <h2>¡Evaluación Completada!</h2>
+                <p>Tus respuestas han sido enviadas correctamente.</p>
+                <div class="score-card">
+                    <div class="score-number" id="finalScore">-/-</div>
+                    <div class="score-label">Respuestas correctas</div>
+                </div>
+                <p>Recibirás un correo electrónico con los resultados detallados en las próximas 24 horas.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== CONFIGURACIÓN ==========
+        const CONFIG = {
+            AIRTABLE_TOKEN: 'patZYcG5PTVQZfQcr.39c791595fb81b221dafb30bed28588502Saee04e7512cc5e1febb1b0df41890',
+            BASE_ID: 'appvaNZdmHt24cHJV',
+            QUESTIONS_TABLE: 'Banco%20de%20preguntas',
+            RESULTS_TABLE: 'Resultados%20de%20evaluaciones%20por%20candidato'
+        };
+
+        // ========== ESTADO ==========
+        let state = {
+            questions: [],
+            currentIndex: 0,
+            answers: {},
+            evaluationId: null,
+            candidateEmail: null,
+            technology: null,
+            startTime: null
+        };
+
+        // ========== OBTENER PARÁMETROS ==========
+        function getURLParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                evaluationId: params.get('evaluation_id'),
+                candidateEmail: params.get('email'),
+                technology: params.get('technology') || 'Evaluación General'
+            };
+        }
+
+        // ========== CARGAR PREGUNTAS ==========
+        async function loadQuestions() {
+            const params = getURLParams();
+            state.evaluationId = params.evaluationId;
+            state.candidateEmail = params.candidateEmail;
+            state.technology = params.technology;
+            
+            if (!state.evaluationId || !state.candidateEmail) {
+                showError('⚠️ URL inválida. Este enlace debe ser generado desde CoRheSelect.');
+                return;
+            }
+
+            document.getElementById('techBadge').textContent = `📚 ${state.technology}`;
+
+            try {
+                const formula = `{Tipo de pregunta} = 'Técnica'`;
+                const url = `https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.QUESTIONS_TABLE}?filterByFormula=${encodeURIComponent(formula)}&maxRecords=15`;
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${CONFIG.AIRTABLE_TOKEN}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                state.questions = data.records.map(record => ({
+                    id: record.id,
+                    text: record.fields['Pregunta'] || 'Pregunta sin texto',
+                    options: {
+                        A: record.fields['Opción A'],
+                        B: record.fields['Opción B'],
+                        C: record.fields['Opción C'],
+                        D: record.fields['Opción D']
+                    },
+                    correctAnswer: record.fields['Respuesta correcta']
+                })).filter(q => q.text && q.options.A);
+
+                if (state.questions.length === 0) {
+                    showError('⚠️ No se encontraron preguntas disponibles.');
+                    return;
+                }
+
+                state.startTime = new Date();
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('questionContainer').style.display = 'block';
+                
+                renderQuestion();
+                startTimer();
+            } catch (error) {
+                showError(`❌ Error: ${error.message}`);
+            }
+        }
+
+        // ========== RENDERIZAR ==========
+        function renderQuestion() {
+            const question = state.questions[state.currentIndex];
+            const total = state.questions.length;
+            
+            document.getElementById('questionNumber').textContent = `PREGUNTA ${state.currentIndex + 1} DE ${total}`;
+            document.getElementById('questionCounter').textContent = `Pregunta ${state.currentIndex + 1} de ${total}`;
+            document.getElementById('questionText').textContent = question.text;
+            
+            const progress = ((state.currentIndex + 1) / total) * 100;
+            document.getElementById('progressBar').style.width = `${progress}%`;
+            
+            const container = document.getElementById('optionsContainer');
+            container.innerHTML = '';
+            
+            Object.entries(question.options).forEach(([letter, text]) => {
+                if (!text) return;
+                
+                const isSelected = state.answers[state.currentIndex] === letter;
+                const optionDiv = document.createElement('div');
+                optionDiv.className = `option ${isSelected ? 'selected' : ''}`;
+                optionDiv.onclick = () => selectOption(letter);
+                
+                optionDiv.innerHTML = `
+                    <div class="option-letter">${letter}</div>
+                    <div class="option-text">${text}</div>
+                `;
+                
+                container.appendChild(optionDiv);
+            });
+            
+            updateButtons();
+        }
+
+        function selectOption(letter) {
+            state.answers[state.currentIndex] = letter;
+            renderQuestion();
+        }
+
+        function nextQuestion() {
+            if (state.currentIndex < state.questions.length - 1) {
+                state.currentIndex++;
+                renderQuestion();
+            }
+        }
+
+        function previousQuestion() {
+            if (state.currentIndex > 0) {
+                state.currentIndex--;
+                renderQuestion();
+            }
+        }
+
+        function updateButtons() {
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const finishBtn = document.getElementById('finishBtn');
+            
+            prevBtn.style.display = state.currentIndex === 0 ? 'none' : 'block';
+            
+            const isAnswered = state.answers[state.currentIndex] !== undefined;
+            const isLastQuestion = state.currentIndex === state.questions.length - 1;
+            
+            if (isLastQuestion) {
+                nextBtn.style.display = 'none';
+                finishBtn.style.display = 'block';
+                finishBtn.disabled = !isAnswered;
+            } else {
+                nextBtn.style.display = 'block';
+                finishBtn.style.display = 'none';
+                nextBtn.disabled = !isAnswered;
+            }
+        }
+
+        async function submitEvaluation() {
+            const finishBtn = document.getElementById('finishBtn');
+            finishBtn.disabled = true;
+            finishBtn.innerHTML = '⏳ Enviando...';
+            
+            try {
+                let correctCount = 0;
+                for (let i = 0; i < state.questions.length; i++) {
+                    if (state.answers[i] === state.questions[i].correctAnswer) {
+                        correctCount++;
+                    }
+                }
+                
+                const total = state.questions.length;
+                const percentage = Math.round((correctCount / total) * 100);
+                
+                document.getElementById('questionContainer').style.display = 'none';
+                document.getElementById('successScreen').style.display = 'block';
+                document.getElementById('finalScore').textContent = `${correctCount}/${total}`;
+                
+            } catch (error) {
+                showError('❌ Error al enviar. Intenta nuevamente.');
+                finishBtn.disabled = false;
+                finishBtn.innerHTML = '✓ Finalizar';
+            }
+        }
+
+        function startTimer() {
+            setInterval(() => {
+                const elapsed = Math.floor((new Date() - state.startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                document.getElementById('timeRemaining').textContent = 
+                    `⏱️ ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            document.getElementById('loadingScreen').style.display = 'none';
+        }
+
+        window.addEventListener('DOMContentLoaded', loadQuestions);
+    </script>
+</body>
+</html>
