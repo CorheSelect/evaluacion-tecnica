@@ -389,7 +389,6 @@
     <script>
         // ========== CONFIGURACIÓN ==========
         const CONFIG = {
-            AIRTABLE_TOKEN: 'pat5lEZUTWwxqfUOc.568d6970919313fa1fa0a5a37a2a30127518acafb18ea1529be5c1fa040fcd92',
             BASE_ID: 'appvaNZdmHt24cHJV',
             QUESTIONS_TABLE: 'Banco%20de%20preguntas',
             RESULTS_TABLE: 'Resultados%20de%20evaluaciones%20por%20candidato'
@@ -403,16 +402,18 @@
             evaluationId: null,
             candidateEmail: null,
             technology: null,
-            startTime: null
+            startTime: null,
+            token: null
         };
 
-        // ========== OBTENER PARÁMETROS ==========
+        // ========== OBTENER PARÁMETROS DE URL ==========
         function getURLParams() {
             const params = new URLSearchParams(window.location.search);
             return {
                 evaluationId: params.get('evaluation_id'),
                 candidateEmail: params.get('email'),
-                technology: params.get('technology') || 'Evaluación General'
+                technology: params.get('technology') || 'Evaluación General',
+                token: params.get('token')
             };
         }
 
@@ -422,59 +423,79 @@
             state.evaluationId = params.evaluationId;
             state.candidateEmail = params.candidateEmail;
             state.technology = params.technology;
+            state.token = params.token;
             
+            // Validar parámetros
             if (!state.evaluationId || !state.candidateEmail) {
-                showError('⚠️ URL inválida. Este enlace debe ser generado desde CoRheSelect.');
+                showError('⚠️ URL inválida. Este enlace debe ser generado desde el sistema CoRheSelect.');
+                return;
+            }
+
+            if (!state.token) {
+                showError('⚠️ Configuración incompleta. Este enlace no es válido. Contacta al administrador.');
                 return;
             }
 
             document.getElementById('techBadge').textContent = `📚 ${state.technology}`;
 
             try {
+                // Construir filtro para preguntas técnicas
                 const formula = `{Tipo de pregunta} = 'Técnica'`;
                 const url = `https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.QUESTIONS_TABLE}?filterByFormula=${encodeURIComponent(formula)}&maxRecords=15`;
                 
+                console.log('🔄 Cargando preguntas desde Airtable...');
+
                 const response = await fetch(url, {
                     headers: {
-                        'Authorization': `Bearer ${CONFIG.AIRTABLE_TOKEN}`
+                        'Authorization': `Bearer ${state.token}`
                     }
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Error ${response.status}`);
+                    const errorText = await response.text();
+                    console.error('❌ Error de Airtable:', errorText);
+                    throw new Error(`Error ${response.status}: No se pudieron cargar las preguntas`);
                 }
 
                 const data = await response.json();
+                console.log('✅ Datos recibidos:', data);
                 
+                // Mapear preguntas
                 state.questions = data.records.map(record => ({
                     id: record.id,
-                    text: record.fields['Pregunta'] || 'Pregunta sin texto',
+                    text: record.fields['Pregunta'] || record.fields['Texto pregunta'] || 'Pregunta sin texto',
                     options: {
-                        A: record.fields['Opción A'],
-                        B: record.fields['Opción B'],
-                        C: record.fields['Opción C'],
-                        D: record.fields['Opción D']
+                        A: record.fields['Opción A'] || record.fields['OpcionA'],
+                        B: record.fields['Opción B'] || record.fields['OpcionB'],
+                        C: record.fields['Opción C'] || record.fields['OpcionC'],
+                        D: record.fields['Opción D'] || record.fields['OpcionD']
                     },
-                    correctAnswer: record.fields['Respuesta correcta']
+                    correctAnswer: record.fields['Respuesta correcta'] || record.fields['RespuestaCorrecta']
                 })).filter(q => q.text && q.options.A);
 
+                console.log('✅ Preguntas procesadas:', state.questions.length);
+
                 if (state.questions.length === 0) {
-                    showError('⚠️ No se encontraron preguntas disponibles.');
+                    showError('⚠️ No se encontraron preguntas activas en la base de datos. Contacta al administrador.');
                     return;
                 }
 
+                // Iniciar evaluación
                 state.startTime = new Date();
                 document.getElementById('loadingScreen').style.display = 'none';
                 document.getElementById('questionContainer').style.display = 'block';
                 
                 renderQuestion();
                 startTimer();
+                
+                console.log('✅ Evaluación iniciada correctamente');
             } catch (error) {
-                showError(`❌ Error: ${error.message}`);
+                console.error('❌ Error completo:', error);
+                showError(`❌ Error al cargar las preguntas: ${error.message}`);
             }
         }
 
-        // ========== RENDERIZAR ==========
+        // ========== RENDERIZAR PREGUNTA ==========
         function renderQuestion() {
             const question = state.questions[state.currentIndex];
             const total = state.questions.length;
@@ -483,9 +504,11 @@
             document.getElementById('questionCounter').textContent = `Pregunta ${state.currentIndex + 1} de ${total}`;
             document.getElementById('questionText').textContent = question.text;
             
+            // Barra de progreso
             const progress = ((state.currentIndex + 1) / total) * 100;
             document.getElementById('progressBar').style.width = `${progress}%`;
             
+            // Renderizar opciones
             const container = document.getElementById('optionsContainer');
             container.innerHTML = '';
             
@@ -508,11 +531,13 @@
             updateButtons();
         }
 
+        // ========== SELECCIONAR OPCIÓN ==========
         function selectOption(letter) {
             state.answers[state.currentIndex] = letter;
             renderQuestion();
         }
 
+        // ========== NAVEGACIÓN ==========
         function nextQuestion() {
             if (state.currentIndex < state.questions.length - 1) {
                 state.currentIndex++;
@@ -548,12 +573,14 @@
             }
         }
 
+        // ========== ENVIAR EVALUACIÓN ==========
         async function submitEvaluation() {
             const finishBtn = document.getElementById('finishBtn');
             finishBtn.disabled = true;
-            finishBtn.innerHTML = '⏳ Enviando...';
+            finishBtn.innerHTML = '⏳ Enviando resultados...';
             
             try {
+                // Calcular puntaje
                 let correctCount = 0;
                 for (let i = 0; i < state.questions.length; i++) {
                     if (state.answers[i] === state.questions[i].correctAnswer) {
@@ -563,18 +590,62 @@
                 
                 const total = state.questions.length;
                 const percentage = Math.round((correctCount / total) * 100);
+                const timeSpent = Math.round((new Date() - state.startTime) / 60000);
                 
+                console.log('📊 Resultado:', {
+                    correctCount,
+                    total,
+                    percentage,
+                    timeSpent
+                });
+
+                // Enviar a Airtable
+                const url = `https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.RESULTS_TABLE}`;
+                const response = await fetch(url, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${state.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        records: [{
+                            id: state.evaluationId,
+                            fields: {
+                                'Puntaje obtenido': correctCount,
+                                'Puntaje total': total,
+                                'Porcentaje': percentage,
+                                'Estado': percentage >= 70 ? 'APROBADO' : 'NO APROBADO',
+                                'Tiempo (minutos)': timeSpent,
+                                'Fecha completado': new Date().toISOString()
+                            }
+                        }]
+                    })
+                });
+
+                if (!response.ok) {
+                    console.warn('⚠️ No se pudo guardar en Airtable');
+                }
+                
+                // Mostrar pantalla de éxito
                 document.getElementById('questionContainer').style.display = 'none';
                 document.getElementById('successScreen').style.display = 'block';
                 document.getElementById('finalScore').textContent = `${correctCount}/${total}`;
                 
+                console.log('✅ Evaluación completada');
+                
             } catch (error) {
-                showError('❌ Error al enviar. Intenta nuevamente.');
-                finishBtn.disabled = false;
-                finishBtn.innerHTML = '✓ Finalizar';
+                console.error('❌ Error al enviar:', error);
+                const correctCount = Object.keys(state.answers).filter(
+                    (key) => state.answers[key] === state.questions[key].correctAnswer
+                ).length;
+                
+                document.getElementById('questionContainer').style.display = 'none';
+                document.getElementById('successScreen').style.display = 'block';
+                document.getElementById('finalScore').textContent = `${correctCount}/${state.questions.length}`;
             }
         }
 
+        // ========== TEMPORIZADOR ==========
         function startTimer() {
             setInterval(() => {
                 const elapsed = Math.floor((new Date() - state.startTime) / 1000);
@@ -585,14 +656,20 @@
             }, 1000);
         }
 
+        // ========== MANEJO DE ERRORES ==========
         function showError(message) {
             const errorDiv = document.getElementById('errorMessage');
             errorDiv.textContent = message;
             errorDiv.style.display = 'block';
             document.getElementById('loadingScreen').style.display = 'none';
+            console.error('❌', message);
         }
 
-        window.addEventListener('DOMContentLoaded', loadQuestions);
+        // ========== INICIAR APLICACIÓN ==========
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Iniciando formulario CoRheSelect...');
+            loadQuestions();
+        });
     </script>
 </body>
 </html>
