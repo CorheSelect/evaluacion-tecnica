@@ -390,8 +390,9 @@
         // ========== CONFIGURACIÓN ==========
         const CONFIG = {
             BASE_ID: 'appvaNZdmHt24cHJV',
-            QUESTIONS_TABLE: 'Banco%20de%20preguntas',
-            RESULTS_TABLE: 'Resultados%20de%20evaluaciones%20por%20candidato'
+            QUESTIONS_TABLE: '7.%20Banco%20de%20preguntas',
+            RESULTS_TABLE: '6.%20Resultados%20de%20evaluaciones%20por%20candidato',
+            ANSWERS_TABLE: '11.%20Respuestas%20de%20las%20evaluaciones'
         };
 
         // ========== ESTADO ==========
@@ -443,7 +444,7 @@
                 const formula = `{Tipo de pregunta} = 'Técnica'`;
                 const url = `https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.QUESTIONS_TABLE}?filterByFormula=${encodeURIComponent(formula)}&maxRecords=15`;
                 
-                console.log('🔄 Cargando preguntas desde Airtable...');
+                console.log('🔄 Cargando preguntas desde:', url);
 
                 const response = await fetch(url, {
                     headers: {
@@ -582,10 +583,20 @@
             try {
                 // Calcular puntaje
                 let correctCount = 0;
+                const answersDetails = [];
+                
                 for (let i = 0; i < state.questions.length; i++) {
-                    if (state.answers[i] === state.questions[i].correctAnswer) {
-                        correctCount++;
-                    }
+                    const question = state.questions[i];
+                    const userAnswer = state.answers[i];
+                    const isCorrect = userAnswer === question.correctAnswer;
+                    
+                    if (isCorrect) correctCount++;
+                    
+                    answersDetails.push({
+                        questionId: question.id,
+                        userAnswer: userAnswer,
+                        isCorrect: isCorrect
+                    });
                 }
                 
                 const total = state.questions.length;
@@ -599,9 +610,9 @@
                     timeSpent
                 });
 
-                // Enviar a Airtable
-                const url = `https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.RESULTS_TABLE}`;
-                const response = await fetch(url, {
+                // Actualizar resultado en tabla de Resultados
+                const updateResultUrl = `https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.RESULTS_TABLE}`;
+                await fetch(updateResultUrl, {
                     method: 'PATCH',
                     headers: {
                         'Authorization': `Bearer ${state.token}`,
@@ -622,8 +633,28 @@
                     })
                 });
 
-                if (!response.ok) {
-                    console.warn('⚠️ No se pudo guardar en Airtable');
+                // Guardar respuestas individuales en tabla de Respuestas
+                for (const answer of answersDetails) {
+                    try {
+                        await fetch(`https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.ANSWERS_TABLE}`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${state.token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                fields: {
+                                    'Resultado evaluación': [state.evaluationId],
+                                    'Pregunta': [answer.questionId],
+                                    'Respuesta candidato': answer.userAnswer,
+                                    'Es correcta': answer.isCorrect,
+                                    'Puntaje obtenido': answer.isCorrect ? 1 : 0
+                                }
+                            })
+                        });
+                    } catch (err) {
+                        console.warn('⚠️ No se pudo guardar respuesta individual:', err);
+                    }
                 }
                 
                 // Mostrar pantalla de éxito
@@ -631,10 +662,11 @@
                 document.getElementById('successScreen').style.display = 'block';
                 document.getElementById('finalScore').textContent = `${correctCount}/${total}`;
                 
-                console.log('✅ Evaluación completada');
+                console.log('✅ Evaluación completada y guardada');
                 
             } catch (error) {
                 console.error('❌ Error al enviar:', error);
+                // Mostrar resultado aunque falle el guardado
                 const correctCount = Object.keys(state.answers).filter(
                     (key) => state.answers[key] === state.questions[key].correctAnswer
                 ).length;
