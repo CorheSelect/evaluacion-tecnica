@@ -147,7 +147,7 @@
             cursor: pointer;
             transition: all 0.2s ease;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 16px;
         }
         
@@ -391,8 +391,8 @@
         const CONFIG = {
             BASE_ID: 'appvaNZdmHt24cHJV',
             QUESTIONS_TABLE: 'tblFqfMPK6ARWjwS4',
-            RESULTS_TABLE: 'tbl5YjVUVAwNumy1A',
-            ANSWERS_TABLE: 'tblSabocobQROBQY7'
+            RESULTS_TABLE: 'tbl5YjVUVAwMumylA',
+            ANSWERS_TABLE: 'tblSa0oco0QR0BQY7'
         };
 
         // ========== ESTADO ==========
@@ -418,6 +418,25 @@
             };
         }
 
+        // ========== PARSEAR OPCIONES DE RESPUESTA ==========
+        function parseOptions(optionsText) {
+            if (!optionsText) return {};
+            
+            const options = {};
+            const lines = optionsText.split('\n').filter(line => line.trim());
+            
+            lines.forEach(line => {
+                const match = line.match(/^([a-d])\)\s*(.+)$/i);
+                if (match) {
+                    const letter = match[1].toUpperCase();
+                    const text = match[2].trim();
+                    options[letter] = text;
+                }
+            });
+            
+            return options;
+        }
+
         // ========== CARGAR PREGUNTAS ==========
         async function loadQuestions() {
             const params = getURLParams();
@@ -426,7 +445,6 @@
             state.technology = params.technology;
             state.token = params.token;
             
-            // Validar parámetros
             if (!state.evaluationId || !state.candidateEmail) {
                 showError('⚠️ URL inválida. Este enlace debe ser generado desde el sistema CoRheSelect.');
                 return;
@@ -440,9 +458,7 @@
             document.getElementById('techBadge').textContent = `📚 ${state.technology}`;
 
             try {
-                // Construir filtro para preguntas técnicas
-                const formula = `{Tipo de pregunta} = 'Técnica'`;
-                const url = `https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.QUESTIONS_TABLE}?filterByFormula=${encodeURIComponent(formula)}&maxRecords=15`;
+                const url = `https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.QUESTIONS_TABLE}?maxRecords=15`;
                 
                 console.log('🔄 Cargando preguntas desde:', url);
 
@@ -462,26 +478,25 @@
                 console.log('✅ Datos recibidos:', data);
                 
                 // Mapear preguntas
-                state.questions = data.records.map(record => ({
-                    id: record.id,
-                    text: record.fields['Pregunta'] || record.fields['Texto pregunta'] || 'Pregunta sin texto',
-                    options: {
-                        A: record.fields['Opción A'] || record.fields['OpcionA'],
-                        B: record.fields['Opción B'] || record.fields['OpcionB'],
-                        C: record.fields['Opción C'] || record.fields['OpcionC'],
-                        D: record.fields['Opción D'] || record.fields['OpcionD']
-                    },
-                    correctAnswer: record.fields['Respuesta correcta'] || record.fields['RespuestaCorrecta']
-                })).filter(q => q.text && q.options.A);
+                state.questions = data.records.map(record => {
+                    const optionsText = record.fields['Opciones de respuesta'] || '';
+                    const options = parseOptions(optionsText);
+                    
+                    return {
+                        id: record.id,
+                        text: record.fields['Pregunta'] || 'Pregunta sin texto',
+                        options: options,
+                        correctAnswer: record.fields['Respuesta correcta']
+                    };
+                }).filter(q => q.text && Object.keys(q.options).length > 0);
 
                 console.log('✅ Preguntas procesadas:', state.questions.length);
 
                 if (state.questions.length === 0) {
-                    showError('⚠️ No se encontraron preguntas activas en la base de datos. Contacta al administrador.');
+                    showError('⚠️ No se encontraron preguntas disponibles en la base de datos.');
                     return;
                 }
 
-                // Iniciar evaluación
                 state.startTime = new Date();
                 document.getElementById('loadingScreen').style.display = 'none';
                 document.getElementById('questionContainer').style.display = 'block';
@@ -505,17 +520,13 @@
             document.getElementById('questionCounter').textContent = `Pregunta ${state.currentIndex + 1} de ${total}`;
             document.getElementById('questionText').textContent = question.text;
             
-            // Barra de progreso
             const progress = ((state.currentIndex + 1) / total) * 100;
             document.getElementById('progressBar').style.width = `${progress}%`;
             
-            // Renderizar opciones
             const container = document.getElementById('optionsContainer');
             container.innerHTML = '';
             
             Object.entries(question.options).forEach(([letter, text]) => {
-                if (!text) return;
-                
                 const isSelected = state.answers[state.currentIndex] === letter;
                 const optionDiv = document.createElement('div');
                 optionDiv.className = `option ${isSelected ? 'selected' : ''}`;
@@ -532,13 +543,11 @@
             updateButtons();
         }
 
-        // ========== SELECCIONAR OPCIÓN ==========
         function selectOption(letter) {
             state.answers[state.currentIndex] = letter;
             renderQuestion();
         }
 
-        // ========== NAVEGACIÓN ==========
         function nextQuestion() {
             if (state.currentIndex < state.questions.length - 1) {
                 state.currentIndex++;
@@ -574,45 +583,25 @@
             }
         }
 
-        // ========== ENVIAR EVALUACIÓN ==========
         async function submitEvaluation() {
             const finishBtn = document.getElementById('finishBtn');
             finishBtn.disabled = true;
             finishBtn.innerHTML = '⏳ Enviando resultados...';
             
             try {
-                // Calcular puntaje
                 let correctCount = 0;
-                const answersDetails = [];
                 
                 for (let i = 0; i < state.questions.length; i++) {
-                    const question = state.questions[i];
-                    const userAnswer = state.answers[i];
-                    const isCorrect = userAnswer === question.correctAnswer;
-                    
-                    if (isCorrect) correctCount++;
-                    
-                    answersDetails.push({
-                        questionId: question.id,
-                        userAnswer: userAnswer,
-                        isCorrect: isCorrect
-                    });
+                    if (state.answers[i] === state.questions[i].correctAnswer) {
+                        correctCount++;
+                    }
                 }
                 
                 const total = state.questions.length;
                 const percentage = Math.round((correctCount / total) * 100);
                 const timeSpent = Math.round((new Date() - state.startTime) / 60000);
                 
-                console.log('📊 Resultado:', {
-                    correctCount,
-                    total,
-                    percentage,
-                    timeSpent
-                });
-
-                // Actualizar resultado en tabla de Resultados
-                const updateResultUrl = `https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.RESULTS_TABLE}`;
-                await fetch(updateResultUrl, {
+                await fetch(`https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.RESULTS_TABLE}`, {
                     method: 'PATCH',
                     headers: {
                         'Authorization': `Bearer ${state.token}`,
@@ -632,41 +621,13 @@
                         }]
                     })
                 });
-
-                // Guardar respuestas individuales en tabla de Respuestas
-                for (const answer of answersDetails) {
-                    try {
-                        await fetch(`https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.ANSWERS_TABLE}`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${state.token}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                fields: {
-                                    'Resultado evaluación': [state.evaluationId],
-                                    'Pregunta': [answer.questionId],
-                                    'Respuesta candidato': answer.userAnswer,
-                                    'Es correcta': answer.isCorrect,
-                                    'Puntaje obtenido': answer.isCorrect ? 1 : 0
-                                }
-                            })
-                        });
-                    } catch (err) {
-                        console.warn('⚠️ No se pudo guardar respuesta individual:', err);
-                    }
-                }
                 
-                // Mostrar pantalla de éxito
                 document.getElementById('questionContainer').style.display = 'none';
                 document.getElementById('successScreen').style.display = 'block';
                 document.getElementById('finalScore').textContent = `${correctCount}/${total}`;
                 
-                console.log('✅ Evaluación completada y guardada');
-                
             } catch (error) {
-                console.error('❌ Error al enviar:', error);
-                // Mostrar resultado aunque falle el guardado
+                console.error('❌ Error:', error);
                 const correctCount = Object.keys(state.answers).filter(
                     (key) => state.answers[key] === state.questions[key].correctAnswer
                 ).length;
@@ -677,7 +638,6 @@
             }
         }
 
-        // ========== TEMPORIZADOR ==========
         function startTimer() {
             setInterval(() => {
                 const elapsed = Math.floor((new Date() - state.startTime) / 1000);
@@ -688,7 +648,6 @@
             }, 1000);
         }
 
-        // ========== MANEJO DE ERRORES ==========
         function showError(message) {
             const errorDiv = document.getElementById('errorMessage');
             errorDiv.textContent = message;
@@ -697,7 +656,6 @@
             console.error('❌', message);
         }
 
-        // ========== INICIAR APLICACIÓN ==========
         window.addEventListener('DOMContentLoaded', () => {
             console.log('🚀 Iniciando formulario CoRheSelect...');
             loadQuestions();
