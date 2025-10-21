@@ -216,7 +216,7 @@ async function loadQuestions() {
     document.getElementById('techName').textContent = state.technology;
 
     try {
-        console.log('🔄 Paso 1: Obteniendo configuración...');
+        console.log('🔄 Paso 1: Obteniendo configuración de resultados...');
         const resultUrl = `https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.RESULTS_TABLE}/${state.evaluationId}`;
         const resultResponse = await fetch(resultUrl, {
             headers: { 'Authorization': `Bearer ${state.token}` }
@@ -224,13 +224,17 @@ async function loadQuestions() {
         if (!resultResponse.ok) throw new Error('No se pudo cargar la evaluación');
         
         const resultData = await resultResponse.json();
-        const evaluationLinks = resultData.fields['Evaluación técnica'] || resultData.fields['Evaluación'] || [];
+        console.log('✅ Datos de resultado:', resultData.fields);
+        
+        const evaluationLinks = resultData.fields['Nombre de la evaluación'] || [];
+        console.log('📝 Links de evaluación encontrados:', evaluationLinks);
+        
         if (!evaluationLinks || evaluationLinks.length === 0) {
-            throw new Error('No hay evaluación asignada');
+            throw new Error('No hay evaluación asignada a este resultado');
         }
         
         const evaluationConfigId = evaluationLinks[0];
-        console.log('📝 Config ID:', evaluationConfigId);
+        console.log('📝 ID de configuración de evaluación:', evaluationConfigId);
 
         console.log('🔄 Paso 2: Obteniendo preguntas asignadas...');
         const evalConfigUrl = `https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.EVALUATIONS_TABLE}/${evaluationConfigId}`;
@@ -240,14 +244,16 @@ async function loadQuestions() {
         if (!evalConfigResponse.ok) throw new Error('No se pudo cargar configuración de preguntas');
         
         const evalConfigData = await evalConfigResponse.json();
+        console.log('✅ Configuración de evaluación:', evalConfigData.fields);
+        
         state.questionIds = evalConfigData.fields['Preguntas de la evaluación'] || [];
         
         if (state.questionIds.length === 0) {
-            throw new Error('No hay preguntas asignadas');
+            throw new Error('No hay preguntas asignadas a esta evaluación');
         }
-        console.log('📝 Preguntas a cargar:', state.questionIds.length);
+        console.log('📝 IDs de preguntas a cargar:', state.questionIds);
 
-        console.log('🔄 Paso 3: Cargando preguntas...');
+        console.log('🔄 Paso 3: Cargando preguntas específicas...');
         const formula = `OR(${state.questionIds.map(id => `RECORD_ID()='${id}'`).join(',')})`;
         const questionsUrl = `https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.QUESTIONS_TABLE}?filterByFormula=${encodeURIComponent(formula)}`;
         const questionsResponse = await fetch(questionsUrl, {
@@ -256,6 +262,7 @@ async function loadQuestions() {
         if (!questionsResponse.ok) throw new Error('No se pudieron cargar preguntas');
         
         const questionsData = await questionsResponse.json();
+        console.log('✅ Preguntas recibidas:', questionsData.records.length);
         
         state.questions = state.questionIds.map(id => {
             const record = questionsData.records.find(r => r.id === id);
@@ -272,7 +279,7 @@ async function loadQuestions() {
 
         if (state.questions.length === 0) throw new Error('No se encontraron preguntas válidas');
         
-        console.log(`✅ ${state.questions.length} preguntas listas`);
+        console.log(`✅ ${state.questions.length} preguntas listas para evaluación`);
         state.startTime = new Date();
         document.getElementById('loadingScreen').style.display = 'none';
         document.getElementById('progressContainer').style.display = 'block';
@@ -280,7 +287,7 @@ async function loadQuestions() {
         renderQuestion();
         startTimer();
     } catch (error) {
-        console.error('❌ Error:', error);
+        console.error('❌ Error completo:', error);
         showError(`❌ ${error.message}`);
     }
 }
@@ -346,7 +353,7 @@ function updateButtons() {
 async function submitEvaluation() {
     const finishBtn = document.getElementById('finishBtn');
     finishBtn.disabled = true;
-    finishBtn.innerHTML = '⏳ Enviando...';
+    finishBtn.innerHTML = '⏳ Enviando resultados...';
     try {
         let correctCount = 0;
         for (let i = 0; i < state.questions.length; i++) {
@@ -357,6 +364,7 @@ async function submitEvaluation() {
         const total = state.questions.length;
         const percentage = Math.round((correctCount / total) * 100);
         const timeSpent = Math.round((new Date() - state.startTime) / 60000);
+        
         await fetch(`https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.RESULTS_TABLE}`, {
             method: 'PATCH',
             headers: {
@@ -377,12 +385,13 @@ async function submitEvaluation() {
                 }]
             })
         });
+        
         document.getElementById('progressContainer').style.display = 'none';
         document.getElementById('questionContainer').classList.add('hidden');
         document.getElementById('successScreen').style.display = 'block';
         document.getElementById('finalScore').textContent = `${correctCount}/${total}`;
     } catch (error) {
-        console.error('❌ Error:', error);
+        console.error('❌ Error al guardar:', error);
         const correctCount = Object.keys(state.answers).filter(key => state.answers[key] === state.questions[key].correctAnswer).length;
         document.getElementById('progressContainer').style.display = 'none';
         document.getElementById('questionContainer').classList.add('hidden');
@@ -406,6 +415,7 @@ function showError(message) {
     errorDiv.style.display = 'block';
     document.getElementById('loadingScreen').style.display = 'none';
     document.getElementById('welcomeScreen').classList.add('hidden');
+    console.error('❌', message);
 }
 
 window.addEventListener('DOMContentLoaded', () => {
