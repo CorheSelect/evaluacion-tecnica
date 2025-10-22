@@ -65,23 +65,6 @@
         .error-message { background: #fed7d7; color: #c53030; padding: 20px; border-radius: 12px; margin: 20px 0; display: none; font-weight: 500; }
         .info-badge { display: inline-block; background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; font-size: 14px; margin-top: 10px; }
         .hidden { display: none !important; }
-        
-        /* ===== ESTILOS NUEVOS PARA TEMPORIZADOR ===== */
-        .timer-warning { color: #ed8936 !important; animation: pulse 1s infinite; }
-        .timer-danger { color: #e53e3e !important; animation: pulse 0.5s infinite; }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-        .time-alert { background: #fff3cd; border: 2px solid #ffc107; padding: 16px; border-radius: 8px; margin-bottom: 20px; display: none; }
-        .time-alert.danger { background: #f8d7da; border-color: #dc3545; animation: shake 0.5s; }
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
-        .time-alert p { margin: 0; color: #856404; font-weight: 600; text-align: center; }
-        .time-alert.danger p { color: #721c24; }
     </style>
 </head>
 <body>
@@ -103,23 +86,15 @@
         </div>
         <div class="content">
             <div class="error-message" id="errorMessage"></div>
-            
-            <!-- NUEVO: Alerta de tiempo -->
-            <div class="time-alert" id="timeAlert">
-                <p id="timeAlertMessage"></p>
-            </div>
-            
             <div class="welcome-screen" id="welcomeScreen">
                 <h2>Bienvenido/a a tu Evaluación Técnica</h2>
                 <div class="instructions">
                     <h3>📋 Instrucciones</h3>
                     <ul>
                         <li>Esta evaluación consta de preguntas de opción múltiple sobre <strong id="techName">las herramientas requeridas</strong>.</li>
-                        <li id="timeInstruction">Tendrás un tiempo limitado para completarla (2 minutos por pregunta).</li>
+                        <li>Tendrás tiempo ilimitado para completarla, pero te recomendamos hacerla sin interrupciones.</li>
                         <li>Cada pregunta tiene una sola respuesta correcta.</li>
                         <li>Puedes navegar entre preguntas usando los botones "Anterior" y "Siguiente".</li>
-                        <li>El temporizador comenzará cuando presiones "Comenzar Evaluación".</li>
-                        <li>Si el tiempo se agota, la evaluación se enviará automáticamente con las respuestas que hayas dado.</li>
                         <li>Una vez que finalices, no podrás modificar tus respuestas.</li>
                         <li>Asegúrate de tener una conexión estable a internet durante todo el proceso.</li>
                     </ul>
@@ -172,13 +147,12 @@
         </div>
     </div>
     <script>
-const CONFIG = {
+        const CONFIG = {
     BASE_ID: 'appvaNZdmHt24cHJV',
     QUESTIONS_TABLE: 'tblFqfMPK6ARWjwS4',
     EVALUATIONS_TABLE: 'tblozGLg1exvwNp8I',
     RESULTS_TABLE: 'tbl5YjVUVAwMumylA',
-    ANSWERS_TABLE: 'tblSa0oco0QR0BQY7',
-    MINUTES_PER_QUESTION: 2  // ⭐ NUEVO: Tiempo por pregunta
+    ANSWERS_TABLE: 'tblSa0oco0QR0BQY7'
 };
 
 let state = {
@@ -190,12 +164,7 @@ let state = {
     technology: null,
     startTime: null,
     token: null,
-    questionIds: [],
-    // ⭐ NUEVAS variables para temporizador
-    timerInterval: null,
-    totalTimeSeconds: 0,
-    remainingTimeSeconds: 0,
-    timeExpired: false
+    questionIds: []
 };
 
 function getURLParams() {
@@ -310,13 +279,7 @@ async function loadQuestions() {
 
         if (state.questions.length === 0) throw new Error('No se encontraron preguntas válidas');
         
-        // ⭐ NUEVO: Calcular tiempo total basado en número de preguntas
-        state.totalTimeSeconds = state.questions.length * CONFIG.MINUTES_PER_QUESTION * 60;
-        state.remainingTimeSeconds = state.totalTimeSeconds;
-        
         console.log(`✅ ${state.questions.length} preguntas listas para evaluación`);
-        console.log(`⏱️ Tiempo total: ${state.questions.length * CONFIG.MINUTES_PER_QUESTION} minutos`);
-        
         state.startTime = new Date();
         document.getElementById('loadingScreen').style.display = 'none';
         document.getElementById('progressContainer').style.display = 'block';
@@ -337,7 +300,6 @@ function renderQuestion() {
     document.getElementById('questionText').textContent = question.text;
     const progress = ((state.currentIndex + 1) / total) * 100;
     document.getElementById('progressBar').style.width = `${progress}%`;
-    
     const container = document.getElementById('optionsContainer');
     container.innerHTML = '';
     Object.entries(question.options).forEach(([letter, text]) => {
@@ -388,23 +350,10 @@ function updateButtons() {
     }
 }
 
-async function submitEvaluation(autoSubmit = false) {
-    // ⭐ NUEVO: Evitar envíos duplicados
-    if (state.timeExpired && !autoSubmit) {
-        return;
-    }
-    
+async function submitEvaluation() {
     const finishBtn = document.getElementById('finishBtn');
-    if (finishBtn) {
-        finishBtn.disabled = true;
-        finishBtn.innerHTML = autoSubmit ? '⏳ Enviando automáticamente...' : '⏳ Enviando resultados...';
-    }
-    
-    // ⭐ NUEVO: Detener el temporizador
-    if (state.timerInterval) {
-        clearInterval(state.timerInterval);
-    }
-    
+    finishBtn.disabled = true;
+    finishBtn.innerHTML = '⏳ Enviando resultados...';
     try {
         let correctCount = 0;
         for (let i = 0; i < state.questions.length; i++) {
@@ -414,7 +363,7 @@ async function submitEvaluation(autoSubmit = false) {
         }
         const total = state.questions.length;
         const percentage = Math.round((correctCount / total) * 100);
-        const timeSpent = Math.round((state.totalTimeSeconds - state.remainingTimeSeconds) / 60);
+        const timeSpent = Math.round((new Date() - state.startTime) / 60000);
         
         await fetch(`https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.RESULTS_TABLE}`, {
             method: 'PATCH',
@@ -439,7 +388,6 @@ async function submitEvaluation(autoSubmit = false) {
         
         document.getElementById('progressContainer').style.display = 'none';
         document.getElementById('questionContainer').classList.add('hidden');
-        document.getElementById('timeAlert').style.display = 'none';
         document.getElementById('successScreen').style.display = 'block';
         document.getElementById('finalScore').textContent = `${correctCount}/${total}`;
     } catch (error) {
@@ -447,59 +395,17 @@ async function submitEvaluation(autoSubmit = false) {
         const correctCount = Object.keys(state.answers).filter(key => state.answers[key] === state.questions[key].correctAnswer).length;
         document.getElementById('progressContainer').style.display = 'none';
         document.getElementById('questionContainer').classList.add('hidden');
-        document.getElementById('timeAlert').style.display = 'none';
         document.getElementById('successScreen').style.display = 'block';
         document.getElementById('finalScore').textContent = `${correctCount}/${state.questions.length}`;
     }
 }
 
-// ⭐ FUNCIÓN MODIFICADA: Temporizador con cuenta regresiva
 function startTimer() {
-    state.timerInterval = setInterval(() => {
-        if (state.timeExpired) return;
-
-        state.remainingTimeSeconds--;
-        
-        const minutes = Math.floor(state.remainingTimeSeconds / 60);
-        const seconds = state.remainingTimeSeconds % 60;
-        const timeDisplay = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        
-        const timerElement = document.getElementById('timeRemaining');
-        timerElement.textContent = `⏱️ ${timeDisplay}`;
-
-        // Alertas de tiempo
-        const alertDiv = document.getElementById('timeAlert');
-        const alertMessage = document.getElementById('timeAlertMessage');
-
-        if (state.remainingTimeSeconds === 300) { // 5 minutos
-            timerElement.classList.add('timer-warning');
-            alertDiv.style.display = 'block';
-            alertDiv.className = 'time-alert';
-            alertMessage.textContent = '⚠️ Quedan 5 minutos para finalizar la evaluación';
-        } else if (state.remainingTimeSeconds === 120) { // 2 minutos
-            timerElement.classList.remove('timer-warning');
-            timerElement.classList.add('timer-danger');
-            alertDiv.className = 'time-alert danger';
-            alertMessage.textContent = '🚨 ¡Quedan solo 2 minutos! La evaluación se enviará automáticamente';
-        } else if (state.remainingTimeSeconds === 60) { // 1 minuto
-            alertDiv.className = 'time-alert danger';
-            alertMessage.textContent = '🚨 ¡ÚLTIMO MINUTO! Revisa tus respuestas';
-        }
-
-        // Tiempo agotado
-        if (state.remainingTimeSeconds <= 0) {
-            clearInterval(state.timerInterval);
-            state.timeExpired = true;
-            timerElement.textContent = '⏱️ 00:00';
-            alertDiv.style.display = 'block';
-            alertDiv.className = 'time-alert danger';
-            alertMessage.textContent = '⏰ Tiempo agotado - Enviando evaluación automáticamente...';
-            
-            setTimeout(() => {
-                submitEvaluation(true);
-            }, 2000);
-        }
-
+    setInterval(() => {
+        const elapsed = Math.floor((new Date() - state.startTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        document.getElementById('timeRemaining').textContent = `⏱️ ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }, 1000);
 }
 
@@ -516,15 +422,6 @@ window.addEventListener('DOMContentLoaded', () => {
     const params = getURLParams();
     document.getElementById('techBadge').textContent = `📚 ${params.technology}`;
     document.getElementById('techName').textContent = params.technology;
-});
-
-// ⭐ NUEVO: Prevenir cierre accidental
-window.addEventListener('beforeunload', (e) => {
-    if (state.startTime && !state.timeExpired && !document.getElementById('questionContainer').classList.contains('hidden')) {
-        e.preventDefault();
-        e.returnValue = '¿Estás seguro de que quieres salir? Tu progreso se perderá.';
-        return e.returnValue;
-    }
 });
     </script>
 </body>
