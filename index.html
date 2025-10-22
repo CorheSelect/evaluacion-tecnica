@@ -243,7 +243,6 @@ async function loadQuestions() {
     const params = getURLParams();
     state.evaluationId = params.evaluationId;
     state.candidateEmail = params.candidateEmail;
-    state.technology = params.technology;
     state.token = params.token;
     
     if (!state.evaluationId || !state.candidateEmail) {
@@ -255,9 +254,7 @@ async function loadQuestions() {
         return;
     }
 
-    // Tecnología oculta - solo mostramos el nombre de la vacante
-    // document.getElementById('techBadge').textContent = `📚 ${state.technology}`;
-    // document.getElementById('techNameIntro').textContent = state.technology;
+    // No usamos el parámetro technology - solo el nombre de la vacante de Airtable
 
     try {
         console.log('🔄 Paso 1: Obteniendo configuración de resultados...');
@@ -535,5 +532,3 @@ window.addEventListener('beforeunload', (e) => {
     </script>
 </body>
 </html>
-
-
