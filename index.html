@@ -226,6 +226,10 @@ async function loadQuestions() {
         const resultData = await resultResponse.json();
         console.log('✅ Datos de resultado:', resultData.fields);
         
+        const jobTitle = resultData.fields['Nombre de la vacante'] || 'esta posición';
+        document.getElementById('jobTitle').textContent = jobTitle;
+        console.log('📋 Nombre de la vacante:', jobTitle);
+        
         const evaluationLinks = resultData.fields['Evaluación asignada'] || [];
         console.log('📝 Links de evaluación encontrados:', evaluationLinks);
         
