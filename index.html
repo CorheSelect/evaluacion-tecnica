@@ -535,6 +535,26 @@ window.addEventListener('beforeunload', (e) => {
 });
     </script>
 </body>
+    <script>
+// Forzar cambios después de que TODO cargue
+window.addEventListener('load', function() {
+    // Ocultar el badge completamente
+    const badge = document.getElementById('techBadge');
+    if (badge) {
+        badge.style.display = 'none';
+        badge.textContent = '';
+    }
+    
+    // Limpiar el texto de tecnología
+    const techIntro = document.getElementById('techNameIntro');
+    if (techIntro) {
+        techIntro.textContent = '';
+        techIntro.style.display = 'none';
+    }
+    
+    console.log('✅ Badge y tecnología ocultados correctamente');
+});
+</script>
 </html>
 
 
