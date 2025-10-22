@@ -514,16 +514,7 @@ function showError(message) {
     console.error('❌', message);
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-    const params = getURLParams();
-    // No usamos technology - solo mostramos el nombre de la vacante
-    // document.getElementById('techBadge').textContent = `📚 ${params.technology}`;
-    // document.getElementById('techNameIntro').textContent = params.technology;
-    
-    const totalMinutes = CONFIG.MINUTES_PER_QUESTION * 10;
-    document.getElementById('estimatedTime').textContent = `${totalMinutes} min`;
-    document.getElementById('timePerQuestion').textContent = `${CONFIG.MINUTES_PER_QUESTION} min/pregunta`;
-});
+
 
 window.addEventListener('beforeunload', (e) => {
     if (state.startTime && !state.timeExpired && !document.getElementById('questionContainer').classList.contains('hidden')) {
