@@ -230,6 +230,11 @@ async function loadQuestions() {
         document.getElementById('jobTitle').textContent = jobTitle;
         console.log('📋 Nombre de la vacante:', jobTitle);
         
+        // Obtener nombre de vacante
+        const jobTitle = resultData.fields['Nombre de la vacante'] || 'la vacante';
+        document.getElementById('jobTitle').textContent = jobTitle;
+
+        // Obtener evaluación
         const evaluationLinks = resultData.fields['Evaluación asignada'] || [];
         console.log('📝 Links de evaluación encontrados:', evaluationLinks);
         
