@@ -18,15 +18,23 @@
         .progress-fill { height: 100%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); transition: width 0.3s ease; border-radius: 4px; }
         .content { padding: 40px; }
         .welcome-screen { display: block; padding: 20px 0; }
-        .welcome-screen h2 { color: #2d3748; font-size: 28px; margin-bottom: 20px; }
+        .welcome-screen h2 { color: #2d3748; font-size: 28px; margin-bottom: 20px; text-align: center; }
+        .welcome-intro { background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border: 2px solid #667eea; padding: 24px; border-radius: 12px; margin-bottom: 24px; text-align: center; }
+        .welcome-intro p { color: #2d3748; font-size: 16px; line-height: 1.8; margin-bottom: 16px; }
+        .welcome-intro p:last-child { margin-bottom: 0; }
+        .welcome-intro strong { color: #667eea; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+        .info-item { background: white; padding: 16px; border-radius: 8px; text-align: center; }
+        .info-icon { font-size: 24px; margin-bottom: 8px; }
+        .info-label { font-size: 14px; color: #718096; margin-bottom: 4px; }
+        .info-value { font-size: 18px; font-weight: 600; color: #2d3748; }
         .instructions { background: #f7fafc; border-left: 4px solid #667eea; padding: 24px; border-radius: 8px; margin-bottom: 24px; }
-        .instructions h3 { color: #667eea; font-size: 20px; margin-bottom: 16px; }
+        .instructions h3 { color: #667eea; font-size: 18px; margin-bottom: 16px; }
         .instructions ul { list-style: none; padding: 0; }
-        .instructions li { padding: 12px 0; color: #4a5568; font-size: 16px; line-height: 1.6; display: flex; align-items: flex-start; gap: 12px; }
-        .instructions li:before { content: "✓"; color: #667eea; font-weight: bold; font-size: 18px; }
-        .privacy-notice { background: #edf2f7; padding: 20px; border-radius: 8px; margin-bottom: 24px; }
-        .privacy-notice h4 { color: #2d3748; font-size: 16px; margin-bottom: 12px; }
-        .privacy-notice p { color: #4a5568; font-size: 14px; line-height: 1.6; }
+        .instructions li { padding: 10px 0; color: #4a5568; font-size: 15px; line-height: 1.5; display: flex; align-items: center; gap: 12px; }
+        .instructions li:before { content: "✓"; color: #667eea; font-weight: bold; font-size: 16px; flex-shrink: 0; }
+        .privacy-notice { background: #edf2f7; padding: 16px; border-radius: 8px; margin-bottom: 24px; font-size: 13px; }
+        .privacy-notice p { color: #4a5568; line-height: 1.5; }
         .start-btn { width: 100%; padding: 18px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
         .start-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(102, 126, 234, 0.4); }
         .loading { text-align: center; padding: 80px 20px; color: #718096; display: none; }
@@ -65,6 +73,14 @@
         .error-message { background: #fed7d7; color: #c53030; padding: 20px; border-radius: 12px; margin: 20px 0; display: none; font-weight: 500; }
         .info-badge { display: inline-block; background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; font-size: 14px; margin-top: 10px; }
         .hidden { display: none !important; }
+        .timer-warning { color: #ed8936 !important; animation: pulse 1s infinite; }
+        .timer-danger { color: #e53e3e !important; animation: pulse 0.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .time-alert { background: #fff3cd; border: 2px solid #ffc107; padding: 16px; border-radius: 8px; margin-bottom: 20px; display: none; }
+        .time-alert.danger { background: #f8d7da; border-color: #dc3545; animation: shake 0.5s; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+        .time-alert p { margin: 0; color: #856404; font-weight: 600; text-align: center; }
+        .time-alert.danger p { color: #721c24; }
     </style>
 </head>
 <body>
@@ -86,23 +102,46 @@
         </div>
         <div class="content">
             <div class="error-message" id="errorMessage"></div>
+            <div class="time-alert" id="timeAlert">
+                <p id="timeAlertMessage"></p>
+            </div>
             <div class="welcome-screen" id="welcomeScreen">
-                <h2>Bienvenido/a a tu Evaluación Técnica</h2>
+                <h2>👋 Bienvenido/a a tu Evaluación Técnica</h2>
+                
+                <div class="welcome-intro">
+                    <p>Esta prueba forma parte del proceso de selección para <strong id="jobTitle">la vacante</strong> y tiene como objetivo evaluar tus conocimientos técnicos en <strong id="techNameIntro">las herramientas requeridas</strong>.</p>
+                    <p>Lee cada pregunta con atención y selecciona la respuesta correcta.</p>
+                    
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-icon">⏱️</div>
+                            <div class="info-label">Tiempo</div>
+                            <div class="info-value" id="estimatedTime">20 min</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-icon">📝</div>
+                            <div class="info-label">Formato</div>
+                            <div class="info-value">Opción múltiple</div>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="instructions">
                     <h3>📋 Instrucciones</h3>
                     <ul>
-                        <li>Esta evaluación consta de preguntas de opción múltiple sobre <strong id="techName">las herramientas requeridas</strong>.</li>
-                        <li>Tendrás tiempo ilimitado para completarla, pero te recomendamos hacerla sin interrupciones.</li>
-                        <li>Cada pregunta tiene una sola respuesta correcta.</li>
-                        <li>Puedes navegar entre preguntas usando los botones "Anterior" y "Siguiente".</li>
-                        <li>Una vez que finalices, no podrás modificar tus respuestas.</li>
-                        <li>Asegúrate de tener una conexión estable a internet durante todo el proceso.</li>
+                        <li>El temporizador inicia al presionar "Comenzar Evaluación"</li>
+                        <li>Tiempo límite: <span id="timePerQuestion">2 minutos por pregunta</span></li>
+                        <li>Cada pregunta tiene una sola respuesta correcta</li>
+                        <li>Puedes navegar entre preguntas con los botones</li>
+                        <li>Al terminar el tiempo, se envía automáticamente</li>
+                        <li>No podrás modificar respuestas después de finalizar</li>
                     </ul>
                 </div>
+                
                 <div class="privacy-notice">
-                    <h4>🔒 Aviso de Privacidad</h4>
-                    <p>Tus datos personales y las respuestas de esta evaluación serán tratados de manera confidencial y utilizados únicamente para fines del proceso de selección. Al continuar, aceptas que CoRheSelect almacene y procese esta información de acuerdo con la normativa de protección de datos vigente (RGPD). Tus datos no serán compartidos con terceros sin tu consentimiento expreso.</p>
+                    <p>🔒 Tus datos serán tratados confidencialmente según el RGPD, únicamente para el proceso de selección.</p>
                 </div>
+                
                 <button class="start-btn" onclick="startEvaluation()">Comenzar Evaluación →</button>
             </div>
             <div class="loading" id="loadingScreen">
@@ -134,25 +173,25 @@
                 </div>
                 <div class="thank-you-message">
                     <h3>📧 ¿Qué sigue ahora?</h3>
-                    <p><strong>1. Revisión de resultados:</strong> Nuestro equipo evaluará tus respuestas en las próximas 24-48 horas.</p>
-                    <p><strong>2. Notificación:</strong> Recibirás un correo electrónico con el resultado y los siguientes pasos del proceso.</p>
-                    <p><strong>3. Próxima fase:</strong> Si apruebas esta evaluación, te contactaremos para la siguiente etapa del proceso de selección.</p>
+                    <p><strong>1. Revisión:</strong> Evaluaremos tus respuestas en 24-48 horas.</p>
+                    <p><strong>2. Notificación:</strong> Te enviaremos un email con los resultados.</p>
+                    <p><strong>3. Siguiente fase:</strong> Si apruebas, te contactaremos para continuar.</p>
                 </div>
                 <div class="thank-you-message">
                     <h3>🙏 Gracias por tu tiempo</h3>
-                    <p>Apreciamos el esfuerzo que has dedicado a completar esta evaluación. Independientemente del resultado, valoramos tu interés en formar parte de nuestro equipo.</p>
-                    <p><strong>Puedes cerrar esta ventana.</strong> Te mantendremos informado/a sobre tu proceso.</p>
+                    <p>Valoramos tu interés en formar parte de nuestro equipo. Te mantendremos informado sobre tu proceso.</p>
+                    <p><strong>Puedes cerrar esta ventana.</strong></p>
                 </div>
             </div>
         </div>
     </div>
     <script>
-        const CONFIG = {
+const CONFIG = {
     BASE_ID: 'appvaNZdmHt24cHJV',
     QUESTIONS_TABLE: 'tblFqfMPK6ARWjwS4',
     EVALUATIONS_TABLE: 'tblozGLg1exvwNp8I',
     RESULTS_TABLE: 'tbl5YjVUVAwMumylA',
-    ANSWERS_TABLE: 'tblSa0oco0QR0BQY7'
+    MINUTES_PER_QUESTION: 2
 };
 
 let state = {
@@ -164,7 +203,11 @@ let state = {
     technology: null,
     startTime: null,
     token: null,
-    questionIds: []
+    questionIds: [],
+    timerInterval: null,
+    totalTimeSeconds: 0,
+    remainingTimeSeconds: 0,
+    timeExpired: false
 };
 
 function getURLParams() {
@@ -213,7 +256,7 @@ async function loadQuestions() {
     }
 
     document.getElementById('techBadge').textContent = `📚 ${state.technology}`;
-    document.getElementById('techName').textContent = state.technology;
+    document.getElementById('techNameIntro').textContent = state.technology;
 
     try {
         console.log('🔄 Paso 1: Obteniendo configuración de resultados...');
@@ -226,15 +269,11 @@ async function loadQuestions() {
         const resultData = await resultResponse.json();
         console.log('✅ Datos de resultado:', resultData.fields);
         
+        // Obtener el nombre de la vacante
         const jobTitle = resultData.fields['Nombre de la vacante'] || 'esta posición';
         document.getElementById('jobTitle').textContent = jobTitle;
         console.log('📋 Nombre de la vacante:', jobTitle);
         
-        // Obtener nombre de vacante
-        const jobTitle = resultData.fields['Nombre de la vacante'] || 'la vacante';
-        document.getElementById('jobTitle').textContent = jobTitle;
-
-        // Obtener evaluación
         const evaluationLinks = resultData.fields['Evaluación asignada'] || [];
         console.log('📝 Links de evaluación encontrados:', evaluationLinks);
         
@@ -288,7 +327,12 @@ async function loadQuestions() {
 
         if (state.questions.length === 0) throw new Error('No se encontraron preguntas válidas');
         
+        state.totalTimeSeconds = state.questions.length * CONFIG.MINUTES_PER_QUESTION * 60;
+        state.remainingTimeSeconds = state.totalTimeSeconds;
+        
         console.log(`✅ ${state.questions.length} preguntas listas para evaluación`);
+        console.log(`⏱️ Tiempo total: ${state.questions.length * CONFIG.MINUTES_PER_QUESTION} minutos`);
+        
         state.startTime = new Date();
         document.getElementById('loadingScreen').style.display = 'none';
         document.getElementById('progressContainer').style.display = 'block';
@@ -309,6 +353,7 @@ function renderQuestion() {
     document.getElementById('questionText').textContent = question.text;
     const progress = ((state.currentIndex + 1) / total) * 100;
     document.getElementById('progressBar').style.width = `${progress}%`;
+    
     const container = document.getElementById('optionsContainer');
     container.innerHTML = '';
     Object.entries(question.options).forEach(([letter, text]) => {
@@ -359,10 +404,17 @@ function updateButtons() {
     }
 }
 
-async function submitEvaluation() {
+async function submitEvaluation(autoSubmit = false) {
+    if (state.timeExpired && !autoSubmit) return;
+    
     const finishBtn = document.getElementById('finishBtn');
-    finishBtn.disabled = true;
-    finishBtn.innerHTML = '⏳ Enviando resultados...';
+    if (finishBtn) {
+        finishBtn.disabled = true;
+        finishBtn.innerHTML = autoSubmit ? '⏳ Enviando automáticamente...' : '⏳ Enviando resultados...';
+    }
+    
+    if (state.timerInterval) clearInterval(state.timerInterval);
+    
     try {
         let correctCount = 0;
         for (let i = 0; i < state.questions.length; i++) {
@@ -372,7 +424,7 @@ async function submitEvaluation() {
         }
         const total = state.questions.length;
         const percentage = Math.round((correctCount / total) * 100);
-        const timeSpent = Math.round((new Date() - state.startTime) / 60000);
+        const timeSpent = Math.round((state.totalTimeSeconds - state.remainingTimeSeconds) / 60);
         
         await fetch(`https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.RESULTS_TABLE}`, {
             method: 'PATCH',
@@ -397,6 +449,7 @@ async function submitEvaluation() {
         
         document.getElementById('progressContainer').style.display = 'none';
         document.getElementById('questionContainer').classList.add('hidden');
+        document.getElementById('timeAlert').style.display = 'none';
         document.getElementById('successScreen').style.display = 'block';
         document.getElementById('finalScore').textContent = `${correctCount}/${total}`;
     } catch (error) {
@@ -404,17 +457,51 @@ async function submitEvaluation() {
         const correctCount = Object.keys(state.answers).filter(key => state.answers[key] === state.questions[key].correctAnswer).length;
         document.getElementById('progressContainer').style.display = 'none';
         document.getElementById('questionContainer').classList.add('hidden');
+        document.getElementById('timeAlert').style.display = 'none';
         document.getElementById('successScreen').style.display = 'block';
         document.getElementById('finalScore').textContent = `${correctCount}/${state.questions.length}`;
     }
 }
 
 function startTimer() {
-    setInterval(() => {
-        const elapsed = Math.floor((new Date() - state.startTime) / 1000);
-        const minutes = Math.floor(elapsed / 60);
-        const seconds = elapsed % 60;
-        document.getElementById('timeRemaining').textContent = `⏱️ ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    state.timerInterval = setInterval(() => {
+        if (state.timeExpired) return;
+        state.remainingTimeSeconds--;
+        
+        const minutes = Math.floor(state.remainingTimeSeconds / 60);
+        const seconds = state.remainingTimeSeconds % 60;
+        const timeDisplay = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        const timerElement = document.getElementById('timeRemaining');
+        timerElement.textContent = `⏱️ ${timeDisplay}`;
+
+        const alertDiv = document.getElementById('timeAlert');
+        const alertMessage = document.getElementById('timeAlertMessage');
+
+        if (state.remainingTimeSeconds === 300) {
+            timerElement.classList.add('timer-warning');
+            alertDiv.style.display = 'block';
+            alertDiv.className = 'time-alert';
+            alertMessage.textContent = '⚠️ Quedan 5 minutos para finalizar la evaluación';
+        } else if (state.remainingTimeSeconds === 120) {
+            timerElement.classList.remove('timer-warning');
+            timerElement.classList.add('timer-danger');
+            alertDiv.className = 'time-alert danger';
+            alertMessage.textContent = '🚨 ¡Quedan solo 2 minutos! La evaluación se enviará automáticamente';
+        } else if (state.remainingTimeSeconds === 60) {
+            alertDiv.className = 'time-alert danger';
+            alertMessage.textContent = '🚨 ¡ÚLTIMO MINUTO! Revisa tus respuestas';
+        }
+
+        if (state.remainingTimeSeconds <= 0) {
+            clearInterval(state.timerInterval);
+            state.timeExpired = true;
+            timerElement.textContent = '⏱️ 00:00';
+            alertDiv.style.display = 'block';
+            alertDiv.className = 'time-alert danger';
+            alertMessage.textContent = '⏰ Tiempo agotado - Enviando evaluación automáticamente...';
+            setTimeout(() => submitEvaluation(true), 2000);
+        }
     }, 1000);
 }
 
@@ -430,7 +517,19 @@ function showError(message) {
 window.addEventListener('DOMContentLoaded', () => {
     const params = getURLParams();
     document.getElementById('techBadge').textContent = `📚 ${params.technology}`;
-    document.getElementById('techName').textContent = params.technology;
+    document.getElementById('techNameIntro').textContent = params.technology;
+    
+    const totalMinutes = CONFIG.MINUTES_PER_QUESTION * 10;
+    document.getElementById('estimatedTime').textContent = `${totalMinutes} min`;
+    document.getElementById('timePerQuestion').textContent = `${CONFIG.MINUTES_PER_QUESTION} min/pregunta`;
+});
+
+window.addEventListener('beforeunload', (e) => {
+    if (state.startTime && !state.timeExpired && !document.getElementById('questionContainer').classList.contains('hidden')) {
+        e.preventDefault();
+        e.returnValue = '¿Estás seguro de que quieres salir? Tu progreso se perderá.';
+        return e.returnValue;
+    }
 });
     </script>
 </body>
