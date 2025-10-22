@@ -200,7 +200,7 @@ let state = {
     answers: {},
     evaluationId: null,
     candidateEmail: null,
-    technology: null,
+    // technology: null, // No se usa más
     startTime: null,
     token: null,
     questionIds: [],
@@ -215,7 +215,7 @@ function getURLParams() {
     return {
         evaluationId: params.get('evaluation_id'),
         candidateEmail: params.get('email'),
-        technology: params.get('technology') || 'Evaluación General',
+        // technology: params.get('technology') || 'Evaluación General', // No se usa más
         token: params.get('token')
     };
 }
@@ -514,8 +514,9 @@ function showError(message) {
 
 window.addEventListener('DOMContentLoaded', () => {
     const params = getURLParams();
-    document.getElementById('techBadge').textContent = `📚 ${params.technology}`;
-    document.getElementById('techNameIntro').textContent = params.technology;
+    // No usamos technology - solo mostramos el nombre de la vacante
+    // document.getElementById('techBadge').textContent = `📚 ${params.technology}`;
+    // document.getElementById('techNameIntro').textContent = params.technology;
     
     const totalMinutes = CONFIG.MINUTES_PER_QUESTION * 10;
     document.getElementById('estimatedTime').textContent = `${totalMinutes} min`;
