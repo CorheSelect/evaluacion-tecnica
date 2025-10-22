@@ -65,9 +65,27 @@
         .error-message { background: #fed7d7; color: #c53030; padding: 20px; border-radius: 12px; margin: 20px 0; display: none; font-weight: 500; }
         .info-badge { display: inline-block; background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; font-size: 14px; margin-top: 10px; }
         .hidden { display: none !important; }
+        
+        /* Estilos para el temporizador */
+        .timer-warning { color: #ed8936 !important; animation: pulse 1s infinite; }
+        .timer-danger { color: #e53e3e !important; animation: pulse 0.5s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .time-alert { background: #fef5e7; border: 2px solid #f39c12; padding: 16px; border-radius: 8px; margin-bottom: 20px; display: none; }
+        .time-alert.warning { background: #fff3cd; border-color: #ffc107; }
+        .time-alert.danger { background: #f8d7da; border-color: #dc3545; animation: shake 0.5s; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .time-alert p { margin: 0; color: #856404; font-weight: 600; }
+        .time-alert.danger p { color: #721c24; }
     </style>
 </head>
-    <body>
+<body>
     <div class="container">
         <div class="header">
             <div class="logo">🎯</div>
@@ -75,6 +93,7 @@
             <p id="evaluationTitle">CoRheSelect - Gestión de Talento</p>
             <div class="info-badge" id="techBadge">Cargando...</div>
         </div>
+        
         <div class="progress-container" id="progressContainer" style="display: none;">
             <div class="progress-info">
                 <span id="questionCounter">Preparando evaluación...</span>
@@ -84,345 +103,402 @@
                 <div class="progress-fill" id="progressBar" style="width: 0%"></div>
             </div>
         </div>
+        
         <div class="content">
             <div class="error-message" id="errorMessage"></div>
+            
+            <!-- Alerta de tiempo -->
+            <div class="time-alert" id="timeAlert">
+                <p id="timeAlertMessage"></p>
+            </div>
+            
             <div class="welcome-screen" id="welcomeScreen">
                 <h2>Bienvenido/a a tu Evaluación Técnica</h2>
+                
                 <div class="instructions">
                     <h3>📋 Instrucciones</h3>
                     <ul>
                         <li>Esta evaluación consta de preguntas de opción múltiple sobre <strong id="techName">las herramientas requeridas</strong>.</li>
-                        <li>Tendrás tiempo ilimitado para completarla, pero te recomendamos hacerla sin interrupciones.</li>
+                        <li id="timeInstruction">Tendrás un tiempo limitado para completarla (2 minutos por pregunta).</li>
                         <li>Cada pregunta tiene una sola respuesta correcta.</li>
                         <li>Puedes navegar entre preguntas usando los botones "Anterior" y "Siguiente".</li>
+                        <li>El temporizador comenzará cuando presiones "Comenzar Evaluación".</li>
+                        <li>Si el tiempo se agota, la evaluación se enviará automáticamente con las respuestas que hayas dado.</li>
                         <li>Una vez que finalices, no podrás modificar tus respuestas.</li>
                         <li>Asegúrate de tener una conexión estable a internet durante todo el proceso.</li>
                     </ul>
                 </div>
+                
                 <div class="privacy-notice">
                     <h4>🔒 Aviso de Privacidad</h4>
                     <p>Tus datos personales y las respuestas de esta evaluación serán tratados de manera confidencial y utilizados únicamente para fines del proceso de selección. Al continuar, aceptas que CoRheSelect almacene y procese esta información de acuerdo con la normativa de protección de datos vigente (RGPD). Tus datos no serán compartidos con terceros sin tu consentimiento expreso.</p>
                 </div>
+                
                 <button class="start-btn" onclick="startEvaluation()">Comenzar Evaluación →</button>
             </div>
+            
             <div class="loading" id="loadingScreen">
                 <div class="loading-spinner"></div>
                 <h3>Cargando preguntas</h3>
                 <p>Conectando con la base de datos...</p>
             </div>
+            
             <div id="questionContainer" class="hidden">
                 <div class="question-card">
                     <div class="question-number" id="questionNumber">PREGUNTA 1</div>
                     <div class="question-text" id="questionText"></div>
                     <div class="options-container" id="optionsContainer"></div>
                 </div>
+                
                 <div class="navigation">
                     <button class="btn btn-secondary" id="prevBtn" onclick="previousQuestion()" style="display: none;">← Anterior</button>
                     <button class="btn btn-primary" id="nextBtn" onclick="nextQuestion()" disabled>Siguiente →</button>
                     <button class="btn btn-primary" id="finishBtn" onclick="submitEvaluation()" style="display: none;" disabled>✓ Finalizar Evaluación</button>
                 </div>
             </div>
+            
             <div class="success-screen" id="successScreen">
                 <div class="success-icon">
-                    <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg viewBox="0 0 52 52">
+                        <path d="M14 27l7 7 16-16" />
+                    </svg>
                 </div>
                 <h2>¡Evaluación Completada!</h2>
-                <p>Has finalizado la evaluación técnica exitosamente.</p>
+                <p>Gracias por completar tu evaluación técnica. Tus respuestas han sido registradas exitosamente.</p>
+                
                 <div class="score-card">
-                    <div class="score-number" id="finalScore">-/-</div>
-                    <div class="score-label">Respuestas correctas</div>
+                    <div class="score-number" id="finalScore">0/0</div>
+                    <div class="score-label">Respuestas Correctas</div>
                 </div>
+                
                 <div class="thank-you-message">
-                    <h3>📧 ¿Qué sigue ahora?</h3>
-                    <p><strong>1. Revisión de resultados:</strong> Nuestro equipo evaluará tus respuestas en las próximas 24-48 horas.</p>
-                    <p><strong>2. Notificación:</strong> Recibirás un correo electrónico con el resultado y los siguientes pasos del proceso.</p>
-                    <p><strong>3. Próxima fase:</strong> Si apruebas esta evaluación, te contactaremos para la siguiente etapa del proceso de selección.</p>
-                </div>
-                <div class="thank-you-message">
-                    <h3>🙏 Gracias por tu tiempo</h3>
-                    <p>Apreciamos el esfuerzo que has dedicado a completar esta evaluación. Independientemente del resultado, valoramos tu interés en formar parte de nuestro equipo.</p>
-                    <p><strong>Puedes cerrar esta ventana.</strong> Te mantendremos informado/a sobre tu proceso.</p>
+                    <h3>📬 ¿Qué sigue?</h3>
+                    <p>Nuestro equipo de reclutamiento revisará tus resultados en las próximas 48-72 horas.</p>
+                    <p>Te contactaremos vía correo electrónico para informarte sobre los siguientes pasos del proceso.</p>
+                    <p><strong>¡Te deseamos mucho éxito en tu proceso de selección!</strong></p>
                 </div>
             </div>
         </div>
     </div>
+
     <script>
-        const CONFIG = {
-    BASE_ID: 'appvaNZdmHt24cHJV',
-    QUESTIONS_TABLE: 'tblFqfMPK6ARWjwS4',
-    EVALUATIONS_TABLE: 'tblozGLg1exvwNp8I',
-    RESULTS_TABLE: 'tbl5YjVUVAwMumylA',
-    ANSWERS_TABLE: 'tblSa0oco0QR0BQY7'
-};
-
-let state = {
-    questions: [],
-    currentIndex: 0,
-    answers: {},
-    evaluationId: null,
-    candidateEmail: null,
-    technology: null,
-    startTime: null,
-    token: null,
-    questionIds: []
-};
-
-function getURLParams() {
-    const params = new URLSearchParams(window.location.search);
-    return {
-        evaluationId: params.get('evaluation_id'),
-        candidateEmail: params.get('email'),
-        technology: params.get('technology') || 'Evaluación General',
-        token: params.get('token')
+    const CONFIG = {
+        BASE_ID: 'TU_BASE_ID_AQUI',
+        QUESTIONS_TABLE: 'Banco de preguntas',
+        RESULTS_TABLE: 'Resultados de evaluaciones',
+        MINUTES_PER_QUESTION: 2  // Tiempo por pregunta en minutos
     };
-}
 
-function parseOptions(optionsText) {
-    if (!optionsText) return {};
-    const options = {};
-    const lines = optionsText.split('\n').filter(line => line.trim());
-    lines.forEach(line => {
-        const match = line.match(/^([a-d])\)\s*(.+)$/i);
-        if (match) {
-            options[match[1].toUpperCase()] = match[2].trim();
+    const state = {
+        questions: [],
+        answers: {},
+        currentIndex: 0,
+        startTime: null,
+        evaluationId: null,
+        token: null,
+        timerInterval: null,
+        totalTimeSeconds: 0,
+        remainingTimeSeconds: 0,
+        timeExpired: false
+    };
+
+    function getURLParams() {
+        const params = new URLSearchParams(window.location.search);
+        return {
+            evaluationId: params.get('eval'),
+            token: params.get('token'),
+            technology: params.get('tech') || 'Evaluación Técnica'
+        };
+    }
+
+    async function startEvaluation() {
+        document.getElementById('welcomeScreen').style.display = 'none';
+        document.getElementById('loadingScreen').style.display = 'block';
+
+        const params = getURLParams();
+        state.evaluationId = params.evaluationId;
+        state.token = params.token;
+
+        if (!state.evaluationId || !state.token) {
+            showError('⚠️ URL inválida. Esta evaluación requiere un enlace personalizado válido. Por favor, contacta con el equipo de CoRheSelect.');
+            return;
         }
-    });
-    return options;
-}
 
-async function startEvaluation() {
-    document.getElementById('welcomeScreen').classList.add('hidden');
-    document.getElementById('loadingScreen').style.display = 'block';
-    await loadQuestions();
-}
+        try {
+            console.log('🔍 Obteniendo datos de la evaluación...');
+            const evalResponse = await fetch(`https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.RESULTS_TABLE}/${state.evaluationId}`, {
+                headers: { 'Authorization': `Bearer ${state.token}` }
+            });
 
-async function loadQuestions() {
-    const params = getURLParams();
-    state.evaluationId = params.evaluationId;
-    state.candidateEmail = params.candidateEmail;
-    state.technology = params.technology;
-    state.token = params.token;
-    
-    if (!state.evaluationId || !state.candidateEmail) {
-        showError('⚠️ URL inválida. Este enlace debe ser generado desde CoRheSelect.');
-        return;
-    }
-    if (!state.token) {
-        showError('⚠️ Configuración incompleta. Contacta al administrador.');
-        return;
-    }
+            if (!evalResponse.ok) throw new Error('No se pudo obtener los datos de la evaluación');
 
-    document.getElementById('techBadge').textContent = `📚 ${state.technology}`;
-    document.getElementById('techName').textContent = state.technology;
-
-    try {
-        console.log('🔄 Paso 1: Obteniendo configuración de resultados...');
-        const resultUrl = `https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.RESULTS_TABLE}/${state.evaluationId}`;
-        const resultResponse = await fetch(resultUrl, {
-            headers: { 'Authorization': `Bearer ${state.token}` }
-        });
-        if (!resultResponse.ok) throw new Error('No se pudo cargar la evaluación');
-        
-        const resultData = await resultResponse.json();
-        console.log('✅ Datos de resultado:', resultData.fields);
-        
-        const evaluationLinks = resultData.fields['Evaluación asignada'] || [];
-        console.log('📝 Links de evaluación encontrados:', evaluationLinks);
-        
-        if (!evaluationLinks || evaluationLinks.length === 0) {
-            throw new Error('No hay evaluación asignada a este resultado');
-        }
-        
-        const evaluationConfigId = evaluationLinks[0];
-        console.log('📝 ID de configuración de evaluación:', evaluationConfigId);
-
-        console.log('🔄 Paso 2: Obteniendo preguntas asignadas...');
-        const evalConfigUrl = `https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.EVALUATIONS_TABLE}/${evaluationConfigId}`;
-        const evalConfigResponse = await fetch(evalConfigUrl, {
-            headers: { 'Authorization': `Bearer ${state.token}` }
-        });
-        if (!evalConfigResponse.ok) throw new Error('No se pudo cargar configuración de preguntas');
-        
-        const evalConfigData = await evalConfigResponse.json();
-        console.log('✅ Configuración de evaluación:', evalConfigData.fields);
-        
-        state.questionIds = evalConfigData.fields['Preguntas de la evaluación'] || [];
-        
-        if (state.questionIds.length === 0) {
-            throw new Error('No hay preguntas asignadas a esta evaluación');
-        }
-        console.log('📝 IDs de preguntas a cargar:', state.questionIds);
-
-        console.log('🔄 Paso 3: Cargando preguntas específicas...');
-        const formula = `OR(${state.questionIds.map(id => `RECORD_ID()='${id}'`).join(',')})`;
-        const questionsUrl = `https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.QUESTIONS_TABLE}?filterByFormula=${encodeURIComponent(formula)}`;
-        const questionsResponse = await fetch(questionsUrl, {
-            headers: { 'Authorization': `Bearer ${state.token}` }
-        });
-        if (!questionsResponse.ok) throw new Error('No se pudieron cargar preguntas');
-        
-        const questionsData = await questionsResponse.json();
-        console.log('✅ Preguntas recibidas:', questionsData.records.length);
-        
-        state.questions = state.questionIds.map(id => {
-            const record = questionsData.records.find(r => r.id === id);
-            if (!record) return null;
-            const optionsText = record.fields['Opciones de respuesta'] || '';
-            const options = parseOptions(optionsText);
-            return {
-                id: record.id,
-                text: record.fields['Pregunta'] || 'Pregunta sin texto',
-                options: options,
-                correctAnswer: record.fields['Respuesta correcta']
-            };
-        }).filter(q => q && q.text && Object.keys(q.options).length > 0);
-
-        if (state.questions.length === 0) throw new Error('No se encontraron preguntas válidas');
-        
-        console.log(`✅ ${state.questions.length} preguntas listas para evaluación`);
-        state.startTime = new Date();
-        document.getElementById('loadingScreen').style.display = 'none';
-        document.getElementById('progressContainer').style.display = 'block';
-        document.getElementById('questionContainer').classList.remove('hidden');
-        renderQuestion();
-        startTimer();
-    } catch (error) {
-        console.error('❌ Error completo:', error);
-        showError(`❌ ${error.message}`);
-    }
-}
-
-function renderQuestion() {
-    const question = state.questions[state.currentIndex];
-    const total = state.questions.length;
-    document.getElementById('questionNumber').textContent = `PREGUNTA ${state.currentIndex + 1} DE ${total}`;
-    document.getElementById('questionCounter').textContent = `Pregunta ${state.currentIndex + 1} de ${total}`;
-    document.getElementById('questionText').textContent = question.text;
-    const progress = ((state.currentIndex + 1) / total) * 100;
-    document.getElementById('progressBar').style.width = `${progress}%`;
-    const container = document.getElementById('optionsContainer');
-    container.innerHTML = '';
-    Object.entries(question.options).forEach(([letter, text]) => {
-        const isSelected = state.answers[state.currentIndex] === letter;
-        const optionDiv = document.createElement('div');
-        optionDiv.className = `option ${isSelected ? 'selected' : ''}`;
-        optionDiv.onclick = () => selectOption(letter);
-        optionDiv.innerHTML = `<div class="option-letter">${letter}</div><div class="option-text">${text}</div>`;
-        container.appendChild(optionDiv);
-    });
-    updateButtons();
-}
-
-function selectOption(letter) {
-    state.answers[state.currentIndex] = letter;
-    renderQuestion();
-}
-
-function nextQuestion() {
-    if (state.currentIndex < state.questions.length - 1) {
-        state.currentIndex++;
-        renderQuestion();
-    }
-}
-
-function previousQuestion() {
-    if (state.currentIndex > 0) {
-        state.currentIndex--;
-        renderQuestion();
-    }
-}
-
-function updateButtons() {
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const finishBtn = document.getElementById('finishBtn');
-    prevBtn.style.display = state.currentIndex === 0 ? 'none' : 'block';
-    const isAnswered = state.answers[state.currentIndex] !== undefined;
-    const isLastQuestion = state.currentIndex === state.questions.length - 1;
-    if (isLastQuestion) {
-        nextBtn.style.display = 'none';
-        finishBtn.style.display = 'block';
-        finishBtn.disabled = !isAnswered;
-    } else {
-        nextBtn.style.display = 'block';
-        finishBtn.style.display = 'none';
-        nextBtn.disabled = !isAnswered;
-    }
-}
-
-async function submitEvaluation() {
-    const finishBtn = document.getElementById('finishBtn');
-    finishBtn.disabled = true;
-    finishBtn.innerHTML = '⏳ Enviando resultados...';
-    try {
-        let correctCount = 0;
-        for (let i = 0; i < state.questions.length; i++) {
-            if (state.answers[i] === state.questions[i].correctAnswer) {
-                correctCount++;
+            const evalData = await evalResponse.json();
+            const evaluationRecord = evalData.fields['Evaluación'];
+            
+            if (!evaluationRecord || evaluationRecord.length === 0) {
+                throw new Error('No se encontró la evaluación asociada');
             }
+
+            const evaluationId = evaluationRecord[0];
+
+            console.log('📚 Cargando evaluación específica...');
+            const evalDetailsResponse = await fetch(`https://api.airtable.com/v0/${CONFIG.BASE_ID}/Evaluaciones/${evaluationId}`, {
+                headers: { 'Authorization': `Bearer ${state.token}` }
+            });
+
+            if (!evalDetailsResponse.ok) throw new Error('No se pudieron obtener los detalles de la evaluación');
+
+            const evalDetails = await evalDetailsResponse.json();
+            const questionIds = evalDetails.fields['Preguntas'] || [];
+
+            if (questionIds.length === 0) {
+                throw new Error('Esta evaluación no tiene preguntas asignadas');
+            }
+
+            console.log('📝 Cargando preguntas...');
+            const questionsPromises = questionIds.map(id =>
+                fetch(`https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.QUESTIONS_TABLE}/${id}`, {
+                    headers: { 'Authorization': `Bearer ${state.token}` }
+                }).then(res => res.json())
+            );
+
+            const questionsData = await Promise.all(questionsPromises);
+            state.questions = questionsData.map(q => q.fields);
+
+            // Calcular tiempo total basado en número de preguntas
+            state.totalTimeSeconds = state.questions.length * CONFIG.MINUTES_PER_QUESTION * 60;
+            state.remainingTimeSeconds = state.totalTimeSeconds;
+
+            console.log(`✅ ${state.questions.length} preguntas cargadas exitosamente`);
+            console.log(`⏱️ Tiempo total: ${state.questions.length * CONFIG.MINUTES_PER_QUESTION} minutos`);
+
+            document.getElementById('loadingScreen').style.display = 'none';
+            document.getElementById('progressContainer').style.display = 'block';
+            document.getElementById('questionContainer').classList.remove('hidden');
+            
+            state.startTime = new Date();
+            renderQuestion();
+            startTimer();
+
+        } catch (error) {
+            console.error('❌ Error:', error);
+            showError(`❌ Error al cargar la evaluación: ${error.message}. Por favor, verifica tu conexión e intenta nuevamente.`);
         }
-        const total = state.questions.length;
-        const percentage = Math.round((correctCount / total) * 100);
-        const timeSpent = Math.round((new Date() - state.startTime) / 60000);
-        
-        await fetch(`https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.RESULTS_TABLE}`, {
-            method: 'PATCH',
-            headers: {
-                'Authorization': `Bearer ${state.token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                records: [{
-                    id: state.evaluationId,
-                    fields: {
-                        'Puntaje obtenido': correctCount,
-                        'Puntaje total': total,
-                        'Porcentaje': percentage,
-                        'Estado': percentage >= 70 ? 'APROBADO' : 'NO APROBADO',
-                        'Tiempo (minutos)': timeSpent,
-                        'Fecha completado': new Date().toISOString()
-                    }
-                }]
-            })
-        });
-        
-        document.getElementById('progressContainer').style.display = 'none';
-        document.getElementById('questionContainer').classList.add('hidden');
-        document.getElementById('successScreen').style.display = 'block';
-        document.getElementById('finalScore').textContent = `${correctCount}/${total}`;
-    } catch (error) {
-        console.error('❌ Error al guardar:', error);
-        const correctCount = Object.keys(state.answers).filter(key => state.answers[key] === state.questions[key].correctAnswer).length;
-        document.getElementById('progressContainer').style.display = 'none';
-        document.getElementById('questionContainer').classList.add('hidden');
-        document.getElementById('successScreen').style.display = 'block';
-        document.getElementById('finalScore').textContent = `${correctCount}/${state.questions.length}`;
     }
-}
 
-function startTimer() {
-    setInterval(() => {
-        const elapsed = Math.floor((new Date() - state.startTime) / 1000);
-        const minutes = Math.floor(elapsed / 60);
-        const seconds = elapsed % 60;
-        document.getElementById('timeRemaining').textContent = `⏱️ ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }, 1000);
-}
+    function renderQuestion() {
+        const question = state.questions[state.currentIndex];
+        const progressPercent = ((state.currentIndex + 1) / state.questions.length) * 100;
+        
+        document.getElementById('questionNumber').textContent = `PREGUNTA ${state.currentIndex + 1} DE ${state.questions.length}`;
+        document.getElementById('questionText').textContent = question['Texto de la pregunta'];
+        document.getElementById('progressBar').style.width = `${progressPercent}%`;
+        document.getElementById('questionCounter').textContent = `Pregunta ${state.currentIndex + 1} de ${state.questions.length}`;
 
-function showError(message) {
-    const errorDiv = document.getElementById('errorMessage');
-    errorDiv.textContent = message;
-    errorDiv.style.display = 'block';
-    document.getElementById('loadingScreen').style.display = 'none';
-    document.getElementById('welcomeScreen').classList.add('hidden');
-    console.error('❌', message);
-}
+        const container = document.getElementById('optionsContainer');
+        container.innerHTML = '';
+        
+        Object.entries(question.options).forEach(([letter, text]) => {
+            const isSelected = state.answers[state.currentIndex] === letter;
+            const optionDiv = document.createElement('div');
+            optionDiv.className = `option ${isSelected ? 'selected' : ''}`;
+            optionDiv.onclick = () => selectOption(letter);
+            optionDiv.innerHTML = `
+                <div class="option-letter">${letter}</div>
+                <div class="option-text">${text}</div>
+            `;
+            container.appendChild(optionDiv);
+        });
 
-window.addEventListener('DOMContentLoaded', () => {
-    const params = getURLParams();
-    document.getElementById('techBadge').textContent = `📚 ${params.technology}`;
-    document.getElementById('techName').textContent = params.technology;
-});
+        updateButtons();
+    }
+
+    function selectOption(letter) {
+        state.answers[state.currentIndex] = letter;
+        renderQuestion();
+    }
+
+    function nextQuestion() {
+        if (state.currentIndex < state.questions.length - 1) {
+            state.currentIndex++;
+            renderQuestion();
+        }
+    }
+
+    function previousQuestion() {
+        if (state.currentIndex > 0) {
+            state.currentIndex--;
+            renderQuestion();
+        }
+    }
+
+    function updateButtons() {
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const finishBtn = document.getElementById('finishBtn');
+        
+        prevBtn.style.display = state.currentIndex === 0 ? 'none' : 'block';
+        
+        const isAnswered = state.answers[state.currentIndex] !== undefined;
+        const isLastQuestion = state.currentIndex === state.questions.length - 1;
+
+        if (isLastQuestion) {
+            nextBtn.style.display = 'none';
+            finishBtn.style.display = 'block';
+            finishBtn.disabled = !isAnswered;
+        } else {
+            nextBtn.style.display = 'block';
+            finishBtn.style.display = 'none';
+            nextBtn.disabled = !isAnswered;
+        }
+    }
+
+    function startTimer() {
+        state.timerInterval = setInterval(() => {
+            if (state.timeExpired) return;
+
+            state.remainingTimeSeconds--;
+            
+            const minutes = Math.floor(state.remainingTimeSeconds / 60);
+            const seconds = state.remainingTimeSeconds % 60;
+            const timeDisplay = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            const timerElement = document.getElementById('timeRemaining');
+            timerElement.textContent = `⏱️ ${timeDisplay}`;
+
+            // Calcular porcentaje de tiempo restante
+            const percentageRemaining = (state.remainingTimeSeconds / state.totalTimeSeconds) * 100;
+
+            // Alertas de tiempo
+            const alertDiv = document.getElementById('timeAlert');
+            const alertMessage = document.getElementById('timeAlertMessage');
+
+            if (state.remainingTimeSeconds === 300) { // 5 minutos restantes
+                timerElement.classList.add('timer-warning');
+                alertDiv.style.display = 'block';
+                alertDiv.className = 'time-alert warning';
+                alertMessage.textContent = '⚠️ Quedan 5 minutos para finalizar la evaluación';
+            } else if (state.remainingTimeSeconds === 120) { // 2 minutos restantes
+                timerElement.classList.remove('timer-warning');
+                timerElement.classList.add('timer-danger');
+                alertDiv.className = 'time-alert danger';
+                alertMessage.textContent = '🚨 ¡Quedan solo 2 minutos! La evaluación se enviará automáticamente';
+            } else if (state.remainingTimeSeconds === 60) { // 1 minuto restante
+                alertDiv.className = 'time-alert danger';
+                alertMessage.textContent = '🚨 ¡ÚLTIMO MINUTO! Revisa tus respuestas';
+            }
+
+            // Tiempo agotado
+            if (state.remainingTimeSeconds <= 0) {
+                clearInterval(state.timerInterval);
+                state.timeExpired = true;
+                timerElement.textContent = '⏱️ 00:00';
+                alertDiv.style.display = 'block';
+                alertDiv.className = 'time-alert danger';
+                alertMessage.textContent = '⏰ Tiempo agotado - Enviando evaluación automáticamente...';
+                
+                // Auto-enviar después de 2 segundos
+                setTimeout(() => {
+                    submitEvaluation(true);
+                }, 2000);
+            }
+
+        }, 1000);
+    }
+
+    async function submitEvaluation(autoSubmit = false) {
+        if (state.timeExpired && !autoSubmit) {
+            return; // Evitar envíos duplicados
+        }
+
+        const finishBtn = document.getElementById('finishBtn');
+        if (finishBtn) {
+            finishBtn.disabled = true;
+            finishBtn.innerHTML = autoSubmit ? '⏳ Enviando automáticamente...' : '⏳ Enviando resultados...';
+        }
+
+        // Detener el temporizador
+        if (state.timerInterval) {
+            clearInterval(state.timerInterval);
+        }
+
+        try {
+            let correctCount = 0;
+            for (let i = 0; i < state.questions.length; i++) {
+                if (state.answers[i] === state.questions[i]['Respuesta correcta']) {
+                    correctCount++;
+                }
+            }
+
+            const total = state.questions.length;
+            const percentage = Math.round((correctCount / total) * 100);
+            const timeSpent = Math.round((state.totalTimeSeconds - state.remainingTimeSeconds) / 60);
+
+            await fetch(`https://api.airtable.com/v0/${CONFIG.BASE_ID}/${CONFIG.RESULTS_TABLE}`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${state.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    records: [{
+                        id: state.evaluationId,
+                        fields: {
+                            'Puntaje obtenido': correctCount,
+                            'Puntaje total': total,
+                            'Porcentaje': percentage,
+                            'Estado': percentage >= 70 ? 'APROBADO' : 'NO APROBADO',
+                            'Tiempo (minutos)': timeSpent,
+                            'Fecha completado': new Date().toISOString(),
+                            'Completado': autoSubmit ? 'Auto-enviado (tiempo agotado)' : 'Enviado por el candidato'
+                        }
+                    }]
+                })
+            });
+
+            document.getElementById('progressContainer').style.display = 'none';
+            document.getElementById('questionContainer').classList.add('hidden');
+            document.getElementById('timeAlert').style.display = 'none';
+            document.getElementById('successScreen').style.display = 'block';
+            document.getElementById('finalScore').textContent = `${correctCount}/${total}`;
+
+        } catch (error) {
+            console.error('❌ Error al guardar:', error);
+            const correctCount = Object.keys(state.answers).filter((key, index) => 
+                state.answers[key] === state.questions[index]['Respuesta correcta']
+            ).length;
+            
+            document.getElementById('progressContainer').style.display = 'none';
+            document.getElementById('questionContainer').classList.add('hidden');
+            document.getElementById('timeAlert').style.display = 'none';
+            document.getElementById('successScreen').style.display = 'block';
+            document.getElementById('finalScore').textContent = `${correctCount}/${state.questions.length}`;
+        }
+    }
+
+    function showError(message) {
+        const errorDiv = document.getElementById('errorMessage');
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+        document.getElementById('loadingScreen').style.display = 'none';
+        document.getElementById('welcomeScreen').classList.add('hidden');
+        console.error('❌', message);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const params = getURLParams();
+        document.getElementById('techBadge').textContent = `📚 ${params.technology}`;
+        document.getElementById('techName').textContent = params.technology;
+    });
+
+    // Prevenir que el usuario cierre la ventana sin confirmar
+    window.addEventListener('beforeunload', (e) => {
+        if (state.startTime && !state.timeExpired && document.getElementById('questionContainer').classList.contains('hidden') === false) {
+            e.preventDefault();
+            e.returnValue = '¿Estás seguro de que quieres salir? Tu progreso se perderá.';
+            return e.returnValue;
+        }
+    });
     </script>
 </body>
 </html>
