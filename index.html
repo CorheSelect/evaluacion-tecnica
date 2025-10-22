@@ -89,7 +89,7 @@
             <div class="logo">🎯</div>
             <h1>Evaluación Técnica</h1>
             <p id="evaluationTitle">CoRheSelect - Gestión de Talento</p>
-            <div class="info-badge" id="techBadge">Cargando...</div>
+            <div class="info-badge" id="techBadge" style="display: none;">Cargando...</div>
         </div>
         <div class="progress-container" id="progressContainer" style="display: none;">
             <div class="progress-info">
@@ -109,7 +109,7 @@
                 <h2>👋 Bienvenido/a a tu Evaluación Técnica</h2>
                 
                 <div class="welcome-intro">
-                    <p>Esta prueba forma parte del proceso de selección para <strong id="jobTitle">la vacante</strong> y tiene como objetivo evaluar tus conocimientos técnicos en <strong id="techNameIntro">las herramientas requeridas</strong>.</p>
+                    <p>Esta prueba forma parte del proceso de selección para la vacante de <strong id="jobTitle">Cargando...</strong> y tiene como objetivo evaluar tus conocimientos técnicos.</p>
                     <p>Lee cada pregunta con atención y selecciona la respuesta correcta.</p>
                     
                     <div class="info-grid">
@@ -255,8 +255,9 @@ async function loadQuestions() {
         return;
     }
 
-    document.getElementById('techBadge').textContent = `📚 ${state.technology}`;
-    document.getElementById('techNameIntro').textContent = state.technology;
+    // Tecnología oculta - solo mostramos el nombre de la vacante
+    // document.getElementById('techBadge').textContent = `📚 ${state.technology}`;
+    // document.getElementById('techNameIntro').textContent = state.technology;
 
     try {
         console.log('🔄 Paso 1: Obteniendo configuración de resultados...');
