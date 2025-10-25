@@ -355,8 +355,18 @@
                 // Obtener el resultado de evaluación
                 const resultData = await airtableRequest(TABLES.RESULTS, state.evaluationId);
                 
+                // Obtener el ID de la evaluación vinculada
+                const evaluationId = resultData.fields['Evaluación']?.[0];
+                
+                if (!evaluationId) {
+                    throw new Error('No hay evaluación vinculada a este resultado');
+                }
+                
+                // Cargar la evaluación para obtener las preguntas
+                const evaluationData = await airtableRequest(TABLES.EVALUATIONS, evaluationId);
+                
                 // Obtener las preguntas vinculadas
-                const questionIds = resultData.fields['Preguntas de la evaluación (from Evaluación)'];
+                const questionIds = evaluationData.fields['Preguntas de la evaluación'];
                 
                 if (!questionIds || questionIds.length === 0) {
                     throw new Error('No hay preguntas asignadas a esta evaluación');
@@ -391,7 +401,7 @@
                 });
                 
                 // Actualizar UI con información de la evaluación
-                const jobTitle = resultData.fields['Nombre de la vacante (from Evaluación)']?.[0] || 'la vacante';
+                const jobTitle = evaluationData.fields['Nombre de la vacante']?.[0] || 'la vacante';
                 document.getElementById('jobTitle').textContent = jobTitle;
                 
                 const totalMinutes = CONFIG.MINUTES_PER_QUESTION * state.questions.length;
