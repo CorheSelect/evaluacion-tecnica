@@ -368,15 +368,27 @@
                 );
                 
                 const questionsData = await Promise.all(questionsPromises);
-                state.questions = questionsData.map(q => ({
-                    id: q.id,
-                    text: q.fields['Pregunta'],
-                    type: q.fields['Tipo de evaluación'] || 'Técnica',
-                    options: q.fields['Opciones de respuesta'] ? q.fields['Opciones de respuesta'].split('\n') : [],
-                    correctAnswer: q.fields['Respuesta correcta'],
-                    maxVideoTime: q.fields['Tiempo máximo de video (segundos)'] || 120,
-                    maxAttempts: q.fields['Intentos permitidos'] || 3
-                }));
+                state.questions = questionsData.map(q => {
+                    // Limpiar opciones: remover letras a), b), c), d) y mantener solo el texto
+                    let cleanOptions = [];
+                    if (q.fields['Opciones de respuesta']) {
+                        const rawOptions = q.fields['Opciones de respuesta'].split('\n');
+                        cleanOptions = rawOptions.map(opt => {
+                            // Remover "a) ", "b) ", etc. del inicio
+                            return opt.replace(/^[a-d]\)\s*/i, '').trim();
+                        }).filter(opt => opt.length > 0);
+                    }
+                    
+                    return {
+                        id: q.id,
+                        text: q.fields['Pregunta'],
+                        type: q.fields['Tipo de evaluación'] || 'Técnica',
+                        options: cleanOptions,
+                        correctAnswer: q.fields['Respuesta correcta'],
+                        maxVideoTime: q.fields['Tiempo máximo de video (segundos)'] || 120,
+                        maxAttempts: q.fields['Intentos permitidos'] || 3
+                    };
+                });
                 
                 // Actualizar UI con información de la evaluación
                 const jobTitle = resultData.fields['Nombre de la vacante (from Evaluación)']?.[0] || 'la vacante';
@@ -687,10 +699,10 @@
             try {
                 const responseData = {
                     fields: {
-                        'Resultado': [state.evaluationId],
+                        '6. Resultados de evaluaciones por candidato 3': [state.evaluationId],
                         'Pregunta': [question.id],
-                        'Respuesta del candidato eval técnica': textAnswer || '',
-                        'Número de intentos': state.currentAttempt
+                        'Respuesta del candidato eval técnica/inglés': textAnswer || '',
+                        'Número de intentos': state.currentAttempt || 1
                     }
                 };
                 
@@ -708,7 +720,8 @@
                 
                 // Check if answer is correct (for technical questions)
                 if (textAnswer && question.correctAnswer) {
-                    responseData.fields['Respuesta correcta'] = textAnswer === question.correctAnswer;
+                    const isCorrect = textAnswer === question.correctAnswer;
+                    responseData.fields['Respuesta correcta'] = isCorrect ? 'Sí' : 'No';
                 }
                 
                 await airtableRequest(TABLES.RESPONSES, '', 'POST', responseData);
@@ -787,4 +800,3 @@
     </script>
 </body>
 </html>
-
